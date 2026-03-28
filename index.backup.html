@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Natillera Familiar - Ahorros y Préstamos</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    }
+    body {
+      background: linear-gradient(135deg, #e8f0f5 0%, #d9e4ec 100%);
+      margin: 0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 2rem;
+      box-shadow: 0 20px 35px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    header {
+      background: #1e3c2c;
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      font-weight: 600;
+    }
+    .user-info {
+      background: #2c5a3e;
+      padding: 0.5rem 1rem;
+      border-radius: 40px;
+      display: flex;
+      gap: 1rem;
+      align-items: baseline;
+    }
+    .btn-logout {
+      background: #b22234;
+      border: none;
+      color: white;
+      padding: 0.4rem 1rem;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-logout:hover {
+      background: #8b1a1a;
+    }
+    main {
+      padding: 2rem;
+    }
+    .login-box, .change-pwd-box {
+      max-width: 450px;
+      margin: 3rem auto;
+      background: #fef9e6;
+      padding: 2rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      border: 1px solid #e2dccd;
+    }
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.4rem;
+      color: #1e3c2c;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.7rem;
+      border-radius: 1rem;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    button {
+      background: #2c5a3e;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      transition: 0.2s;
+      margin-top: 0.5rem;
+    }
+    button:hover {
+      background: #1e3c2c;
+    }
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    .cards-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: #f8fafc;
+      border-radius: 1.2rem;
+      padding: 1.2rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      border-left: 5px solid #2c5a3e;
+    }
+    .card h3 {
+      margin-top: 0;
+      color: #1e3c2c;
+      border-bottom: 2px solid #cbd5e1;
+      padding-bottom: 0.5rem;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 1rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+      background: #e9f0e6;
+      color: #1e3c2c;
+    }
+    .badge {
+      background: #e9ecef;
+      padding: 0.2rem 0.6rem;
+      border-radius: 30px;
+      font-size: 0.8rem;
+    }
+    .btn-sm {
+      padding: 0.3rem 0.8rem;
+      font-size: 0.8rem;
+      width: auto;
+      margin: 0.2rem;
+    }
+    .flex-btns {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .alert {
+      padding: 0.8rem;
+      border-radius: 1rem;
+      margin-bottom: 1rem;
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+    @media (max-width: 700px) {
+      main {
+        padding: 1rem;
+      }
+      header h1 {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-container" id="appRoot">
+  <header id="appHeader" style="display: none;">
+    <h1>Natillera Familiar</h1>
+    <div class="user-info">
+      <span id="currentUserSpan"></span>
+      <button id="logoutBtn" class="btn-logout">Cerrar sesión</button>
+    </div>
+  </header>
+  <main id="appMain">
+    <div id="dynamicContent">Cargando...</div>
+  </main>
+</div>
+
+<script>
+  // ---------- CONSTANTES ----------
+  const STORAGE_KEY = "natillera_familiar_db_v3";
+  const TASA_MENSUAL = 0.05; // 5% mensual sobre el capital
+
+  const defaultData = {
+    users: [
+      { id: 1, username: "admin", password: "admin123", mustChangePassword: false, role: "admin" },
+      { id: 2, username: "carlos", password: "temp123", mustChangePassword: true, role: "saver" },
+      { id: 3, username: "maria", password: "temp123", mustChangePassword: true, role: "saver" }
+    ],
+    savings: [
+      { userId: 2, amount: 120000 },
+      { userId: 3, amount: 85000 }
+    ],
+    loans: [],        // { id, userId, originalAmount, interestRate, startDate, lastInterestDate, accruedInterest, totalPaid }
+    loanRequests: []  // { id, userId, amount, status, requestDate }
+  };
+
+  function loadDB() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
+      return JSON.parse(JSON.stringify(defaultData));
+    }
+    return JSON.parse(stored);
+  }
+
+  function saveDB(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  // Actualiza el interés de un préstamo según los meses completos desde la última actualización
+  function actualizarInteresPrestamo(loan, db) {
+    const now = new Date();
+    if (!loan.lastInterestDate) loan.lastInterestDate = loan.startDate || now.toISOString();
+    const lastDate = new Date(loan.lastInterestDate);
+    let monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
+    if (monthsDiff > 0) {
+      const interesMensual = loan.originalAmount * loan.interestRate;
+      const nuevoInteres = interesMensual * monthsDiff;
+      loan.accruedInterest += nuevoInteres;
+      loan.accruedInterest = parseFloat(loan.accruedInterest.toFixed(2));
+      const newLastDate = new Date(lastDate);
+      newLastDate.setMonth(lastDate.getMonth() + monthsDiff);
+      loan.lastInterestDate = newLastDate.toISOString();
+      saveDB(db);
+    }
+    return loan;
+  }
+
+  function aplicarInteresesATodosLosPrestamos(db) {
+    let updated = false;
+    for (let loan of db.loans) {
+      const deudaActual = loan.originalAmount + loan.accruedInterest - loan.totalPaid;
+      if (deudaActual > 0.01) {
+        actualizarInteresPrestamo(loan, db);
+        updated = true;
+      }
+    }
+    if (updated) saveDB(db);
+    return db;
+  }
+
+  function getDeudaTotalUsuario(userId, db) {
+    let total = 0;
+    for (let loan of db.loans) {
+      if (loan.userId !== userId) continue;
+      const deuda = loan.originalAmount + loan.accruedInterest - loan.totalPaid;
+      if (deuda > 0) total += deuda;
+    }
+    return parseFloat(total.toFixed(2));
+  }
+
+  function getPrestamosActivosConDetalle(userId, db) {
+    return db.loans
+      .filter(loan => (loan.originalAmount + loan.accruedInterest - loan.totalPaid) > 0.01)
+      .map(loan => ({
+        id: loan.id,
+        originalAmount: loan.originalAmount,
+        accruedInterest: loan.accruedInterest,
+        totalPaid: loan.totalPaid,
+        deudaActual: loan.originalAmount + loan.accruedInterest - loan.totalPaid,
+        startDate: loan.startDate
+      }));
+  }
+
+  function registrarPagoPrestamo(loanId, montoPago, db) {
+    const loan = db.loans.find(l => l.id === loanId);
+    if (!loan) return false;
+    actualizarInteresPrestamo(loan, db);
+    let deudaActual = loan.originalAmount + loan.accruedInterest - loan.totalPaid;
+    if (deudaActual <= 0.01) return false;
+    if (montoPago <= 0) return false;
+    if (montoPago > deudaActual) montoPago = deudaActual;
+    loan.totalPaid += montoPago;
+    loan.totalPaid = parseFloat(loan.totalPaid.toFixed(2));
+    saveDB(db);
+    return true;
+  }
+
+  // Al aprobar, se añade inmediatamente el primer mes de interés (5% del capital)
+  function aprobarSolicitud(solicitudId, db) {
+    const reqIndex = db.loanRequests.findIndex(r => r.id === solicitudId);
+    if (reqIndex === -1) return false;
+    const req = db.loanRequests[reqIndex];
+    if (req.status !== "pendiente") return false;
+    const nowISO = new Date().toISOString();
+    const newLoanId = db.loans.length ? Math.max(...db.loans.map(l => l.id)) + 1 : 1;
+    // Interés inicial = 5% del capital (primer mes)
+    const interesInicial = req.amount * TASA_MENSUAL;
+    db.loans.push({
+      id: newLoanId,
+      userId: req.userId,
+      originalAmount: req.amount,
+      interestRate: TASA_MENSUAL,
+      startDate: nowISO,
+      lastInterestDate: nowISO,     // para que no se vuelva a cobrar el primer mes en el próximo cálculo
+      accruedInterest: interesInicial,
+      totalPaid: 0
+    });
+    req.status = "aprobada";
+    saveDB(db);
+    return true;
+  }
+
+  function rechazarSolicitud(solicitudId, db) {
+    const req = db.loanRequests.find(r => r.id === solicitudId);
+    if (req && req.status === "pendiente") {
+      req.status = "rechazada";
+      saveDB(db);
+      return true;
+    }
+    return false;
+  }
+
+  // Funciones auxiliares de ahorros, usuarios, etc.
+  function getAhorroUsuario(userId, db) {
+    const saving = db.savings.find(s => s.userId === userId);
+    return saving ? saving.amount : 0;
+  }
+
+  function agregarAhorro(userId, monto, db) {
+    const idx = db.savings.findIndex(s => s.userId === userId);
+    if (idx >= 0) db.savings[idx].amount += monto;
+    else db.savings.push({ userId, amount: monto });
+    saveDB(db);
+  }
+
+  function crearSolicitudPrestamo(userId, monto, db) {
+    const newId = db.loanRequests.length ? Math.max(...db.loanRequests.map(r => r.id)) + 1 : 1;
+    db.loanRequests.push({
+      id: newId,
+      userId: userId,
+      amount: monto,
+      status: "pendiente",
+      requestDate: new Date().toISOString()
+    });
+    saveDB(db);
+  }
+
+  function crearUsuarioAhorrador(username, passwordGenerica, db) {
+    if (db.users.some(u => u.username === username)) return false;
+    const newId = db.users.length ? Math.max(...db.users.map(u => u.id)) + 1 : 4;
+    db.users.push({
+      id: newId,
+      username: username,
+      password: passwordGenerica,
+      mustChangePassword: true,
+      role: "saver"
+    });
+    if (!db.savings.some(s => s.userId === newId)) {
+      db.savings.push({ userId: newId, amount: 0 });
+    }
+    saveDB(db);
+    return true;
+  }
+
+  function cambiarPassword(userId, newPassword, db) {
+    const user = db.users.find(u => u.id === userId);
+    if (user) {
+      user.password = newPassword;
+      user.mustChangePassword = false;
+      saveDB(db);
+      return true;
+    }
+    return false;
+  }
+
+  // --------------------- SESIÓN Y RENDERIZADO ---------------------
+  let currentSession = null;
+  let globalDB = null;
+
+  function refreshDB() {
+    globalDB = loadDB();
+    globalDB = aplicarInteresesATodosLosPrestamos(globalDB);
+    return globalDB;
+  }
+
+  function renderApp() {
+    if (!currentSession) {
+      renderLogin();
+    } else if (currentSession.mustChangePassword) {
+      renderChangePassword();
+    } else {
+      if (currentSession.role === 'admin') renderAdminDashboard();
+      else renderSaverDashboard();
+    }
+  }
+
+  function renderLogin() {
+    const html = `
+      <div class="login-box">
+        <h2>Acceso a Natillera</h2>
+        <div id="loginMessage" class="alert" style="display:none;"></div>
+        <div class="form-group">
+          <label>Usuario</label>
+          <input type="text" id="loginUsername" placeholder="ej: admin, carlos, maria">
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="loginPassword" placeholder="********">
+        </div>
+        <button id="doLoginBtn">Iniciar sesión</button>
+        <p style="margin-top:1rem; font-size:0.8rem; color:#4a5b6e;">Admin: admin / admin123<br>Ahorradores: carlos o maria (temp123)</p>
+      </div>
+    `;
+    document.getElementById("dynamicContent").innerHTML = html;
+    document.getElementById("appHeader").style.display = "none";
+    document.getElementById("doLoginBtn").addEventListener("click", () => {
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const db = refreshDB();
+      const user = db.users.find(u => u.username === username && u.password === password);
+      const msgDiv = document.getElementById("loginMessage");
+      if (user) {
+        currentSession = {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          mustChangePassword: user.mustChangePassword
+        };
+        renderApp();
+      } else {
+        msgDiv.style.display = "block";
+        msgDiv.innerText = "Usuario o contraseña incorrectos";
+        msgDiv.className = "alert";
+      }
+    });
+  }
+
+  function renderChangePassword() {
+    const html = `
+      <div class="change-pwd-box">
+        <h2>Cambio de contraseña requerido</h2>
+        <p>Hola <strong>${currentSession.username}</strong>, debes cambiar tu contraseña genérica.</p>
+        <div id="pwdMsg" class="alert" style="display:none;"></div>
+        <div class="form-group">
+          <label>Nueva contraseña</label>
+          <input type="password" id="newPwd1" placeholder="Mínimo 4 caracteres">
+        </div>
+        <div class="form-group">
+          <label>Confirmar contraseña</label>
+          <input type="password" id="newPwd2" placeholder="Repite la contraseña">
+        </div>
+        <button id="saveNewPwdBtn">Guardar y continuar</button>
+      </div>
+    `;
+    document.getElementById("dynamicContent").innerHTML = html;
+    document.getElementById("appHeader").style.display = "none";
+    document.getElementById("saveNewPwdBtn").addEventListener("click", () => {
+      const p1 = document.getElementById("newPwd1").value;
+      const p2 = document.getElementById("newPwd2").value;
+      const msg = document.getElementById("pwdMsg");
+      if (p1.length < 4) {
+        msg.innerText = "La contraseña debe tener al menos 4 caracteres";
+        msg.style.display = "block";
+        return;
+      }
+      if (p1 !== p2) {
+        msg.innerText = "Las contraseñas no coinciden";
+        msg.style.display = "block";
+        return;
+      }
+      const db = refreshDB();
+      if (cambiarPassword(currentSession.id, p1, db)) {
+        currentSession.mustChangePassword = false;
+        renderApp();
+      } else {
+        msg.innerText = "Error al cambiar contraseña";
+        msg.style.display = "block";
+      }
+    });
+  }
+
+  function renderSaverDashboard() {
+    const db = refreshDB();
+    const userId = currentSession.id;
+    const ahorro = getAhorroUsuario(userId, db);
+    const deudaTotal = getDeudaTotalUsuario(userId, db);
+    const prestamosDetalle = getPrestamosActivosConDetalle(userId, db);
+    const misSolicitudes = db.loanRequests.filter(r => r.userId === userId).sort((a,b)=>new Date(b.requestDate)-new Date(a.requestDate));
+
+    const html = `
+      <div class="dashboard">
+        <div class="cards-panel">
+          <div class="card"><h3>Mi Ahorro</h3><p style="font-size:2rem;">$${ahorro.toLocaleString()}</p></div>
+          <div class="card"><h3>Deuda total (capital + intereses)</h3><p style="font-size:2rem; color:#b22234;">$${deudaTotal.toLocaleString()}</p><small>Interés: 5% mensual sobre el capital original (se cobra desde la aprobación)</small></div>
+        </div>
+        <div class="card">
+          <h3>Solicitar nuevo préstamo</h3>
+          <div class="form-group"><label>Monto a solicitar</label><input type="number" id="loanAmount" placeholder="Ej: 500000" min="10000" step="1000"></div>
+          <button id="requestLoanBtn">Solicitar préstamo (interés 5% mensual)</button>
+          <div id="reqMsg" style="margin-top:0.5rem;"></div>
+        </div>
+        <div class="card">
+          <h3>Mis préstamos activos (desglose)</h3>
+          <div class="table-wrapper">
+             <table>
+              <thead>
+                 <tr><th>ID</th><th>Capital prestado</th><th>Intereses acumulados</th><th>Total pagado</th><th>Saldo actual</th></tr>
+              </thead>
+              <tbody>
+                ${prestamosDetalle.map(p => `
+                  <tr>
+                    <td>${p.id}</td>
+                    <td>$${p.originalAmount.toLocaleString()}</td>
+                    <td>$${p.accruedInterest.toLocaleString()}</td>
+                    <td>$${p.totalPaid.toLocaleString()}</td>
+                    <td><strong>$${p.deudaActual.toLocaleString()}</strong></td>
+                  </tr>
+                `).join('') || '<tr><td colspan="5">No tienes préstamos activos</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+          <p class="info" style="margin-top:0.5rem;">El interés se calcula mensualmente sobre el capital original. Al aprobarse, se suma el primer mes de interés inmediatamente.</p>
+        </div>
+        <div class="card">
+          <h3>Historial de solicitudes</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Fecha</th><th>Monto</th><th>Estado</th></tr></thead>
+              <tbody>
+                ${misSolicitudes.map(s => `<tr><td>${new Date(s.requestDate).toLocaleDateString()}</td><td>$${s.amount.toLocaleString()}</td><td><span class="badge">${s.status === 'pendiente' ? 'Pendiente' : (s.status === 'aprobada' ? 'Aprobada' : 'Rechazada')}</span></td></tr>`).join('') || '<tr><td colspan="3">No hay solicitudes previas</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById("dynamicContent").innerHTML = html;
+    document.getElementById("appHeader").style.display = "flex";
+    document.getElementById("currentUserSpan").innerHTML = `Usuario: ${currentSession.username} (Ahorrador)`;
+    document.getElementById("logoutBtn").onclick = () => { currentSession = null; renderApp(); };
+    document.getElementById("requestLoanBtn")?.addEventListener("click", () => {
+      const amount = parseFloat(document.getElementById("loanAmount").value);
+      const msgDiv = document.getElementById("reqMsg");
+      if (isNaN(amount) || amount < 10000) {
+        msgDiv.innerHTML = "<span style='color:red'>Monto mínimo $10,000</span>";
+        return;
+      }
+      const dbLocal = refreshDB();
+      crearSolicitudPrestamo(userId, amount, dbLocal);
+      msgDiv.innerHTML = "<span style='color:green'>Solicitud enviada al administrador</span>";
+      setTimeout(() => renderSaverDashboard(), 1000);
+    });
+  }
+
+  function renderAdminDashboard() {
+    let db = refreshDB();
+    const usuarios = db.users.filter(u => u.role === "saver");
+    const solicitudesPendientes = db.loanRequests.filter(r => r.status === "pendiente");
+    const prestamosActivos = db.loans.filter(loan => (loan.originalAmount + loan.accruedInterest - loan.totalPaid) > 0.01);
+
+    const fullRender = () => renderAdminDashboard();
+
+    const html = `
+      <div class="dashboard">
+        <div class="cards-panel">
+          <div class="card"><h3>Ahorradores</h3><p>${usuarios.length} registrados</p></div>
+          <div class="card"><h3>Solicitudes pendientes</h3><p style="font-size:1.8rem;">${solicitudesPendientes.length}</p></div>
+        </div>
+        
+        <div class="card">
+          <h3>Registrar abono de ahorro</h3>
+          <div class="flex-btns" style="display:flex; gap:1rem; flex-wrap:wrap;">
+            <select id="selectUserSavings" style="flex:2">
+              ${usuarios.map(u => `<option value="${u.id}">${u.username} - Ahorro actual: $${getAhorroUsuario(u.id, db).toLocaleString()}</option>`).join('')}
+            </select>
+            <input type="number" id="abonoMonto" placeholder="Monto a agregar" style="flex:1">
+            <button id="btnAddSavings" class="btn-sm">Agregar ahorro</button>
+          </div>
+          <div id="savingMsg" class="info" style="margin-top:1rem;"></div>
+        </div>
+        
+        <div class="card">
+          <h3>Solicitudes de préstamo (interés 5% mensual, se cobra al aprobar)</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Usuario</th><th>Monto solicitado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+              <tbody>
+                ${solicitudesPendientes.map(s => {
+                  const user = db.users.find(u => u.id === s.userId);
+                  return `<tr>
+                    <td>${user?.username || s.userId}</td>
+                    <td>$${s.amount.toLocaleString()}</td>
+                    <td>${new Date(s.requestDate).toLocaleDateString()}</td>
+                    <td class="flex-btns">
+                      <button class="btn-sm approveBtn" data-id="${s.id}">Aprobar</button>
+                      <button class="btn-sm rejectBtn" data-id="${s.id}">Rechazar</button>
+                    </td>
+                  </tr>`;
+                }).join('') || '<tr><td colspan="4">No hay solicitudes pendientes</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3>Préstamos activos (capital + intereses)</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Usuario</th><th>Capital prestado</th><th>Intereses acum.</th><th>Total pagado</th><th>Saldo actual</th><th>Acción pago</th></tr></thead>
+              <tbody>
+                ${prestamosActivos.map(loan => {
+                  const user = db.users.find(u => u.id === loan.userId);
+                  const deuda = loan.originalAmount + loan.accruedInterest - loan.totalPaid;
+                  return `<tr>
+                    <td>${user?.username || loan.userId}</td>
+                    <td>$${loan.originalAmount.toLocaleString()}</td>
+                    <td>$${loan.accruedInterest.toLocaleString()}</td>
+                    <td>$${loan.totalPaid.toLocaleString()}</td>
+                    <td><strong>$${deuda.toLocaleString()}</strong></td>
+                    <td><input type="number" id="pagoMonto_${loan.id}" placeholder="Monto" style="width:100px;"> <button class="btn-sm payLoanBtn" data-id="${loan.id}">Pagar</button></td>
+                  </tr>`;
+                }).join('') || '<tr><td colspan="6">No hay préstamos activos</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card">
+          <h3>Crear nuevo usuario ahorrador (clave genérica: "temp123")</h3>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <input type="text" id="newUserName" placeholder="Nombre usuario" style="flex:2">
+            <button id="btnCreateUser">Crear ahorrador</button>
+          </div>
+          <div id="createUserMsg"></div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("dynamicContent").innerHTML = html;
+    document.getElementById("appHeader").style.display = "flex";
+    document.getElementById("currentUserSpan").innerHTML = `Administrador: ${currentSession.username}`;
+    document.getElementById("logoutBtn").onclick = () => { currentSession = null; renderApp(); };
+
+    document.getElementById("btnAddSavings")?.addEventListener("click", () => {
+      const userId = parseInt(document.getElementById("selectUserSavings").value);
+      const monto = parseFloat(document.getElementById("abonoMonto").value);
+      if (isNaN(monto) || monto <= 0) {
+        document.getElementById("savingMsg").innerHTML = "<span style='color:red'>Monto inválido</span>";
+        return;
+      }
+      const dbLocal = refreshDB();
+      agregarAhorro(userId, monto, dbLocal);
+      document.getElementById("savingMsg").innerHTML = "<span style='color:green'>Ahorro agregado correctamente</span>";
+      setTimeout(() => fullRender(), 800);
+    });
+
+    document.querySelectorAll(".approveBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = parseInt(btn.getAttribute("data-id"));
+        const dbLocal = refreshDB();
+        aprobarSolicitud(id, dbLocal);
+        fullRender();
+      });
+    });
+    document.querySelectorAll(".rejectBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = parseInt(btn.getAttribute("data-id"));
+        const dbLocal = refreshDB();
+        rechazarSolicitud(id, dbLocal);
+        fullRender();
+      });
+    });
+    document.querySelectorAll(".payLoanBtn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const loanId = parseInt(btn.getAttribute("data-id"));
+        const montoInput = document.getElementById(`pagoMonto_${loanId}`);
+        const monto = parseFloat(montoInput.value);
+        if (isNaN(monto) || monto <= 0) {
+          alert("Ingrese un monto válido para el pago");
+          return;
+        }
+        let dbLocal = refreshDB();
+        const success = registrarPagoPrestamo(loanId, monto, dbLocal);
+        if (success) fullRender();
+        else alert("Error en el pago o préstamo no encontrado");
+      });
+    });
+
+    document.getElementById("btnCreateUser")?.addEventListener("click", () => {
+      const username = document.getElementById("newUserName").value.trim();
+      if (!username) {
+        document.getElementById("createUserMsg").innerHTML = "<span style='color:red'>Ingrese nombre</span>";
+        return;
+      }
+      const dbLocal = refreshDB();
+      const created = crearUsuarioAhorrador(username, "temp123", dbLocal);
+      if (created) {
+        document.getElementById("createUserMsg").innerHTML = "<span style='color:green'>Usuario creado con contraseña 'temp123'. Deberá cambiarla al primer inicio.</span>";
+        setTimeout(() => fullRender(), 1000);
+      } else {
+        document.getElementById("createUserMsg").innerHTML = "<span style='color:red'>El usuario ya existe</span>";
+      }
+    });
+  }
+
+  refreshDB();
+  renderApp();
+</script>
+</body>
+</html>
