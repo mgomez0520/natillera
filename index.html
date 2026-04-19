@@ -347,6 +347,7 @@
     const STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX = "natillera_contribution_alert_last_shown";
     const STORAGE_BIOMETRIC_PREFIX = "natillera_biometric_credential";
     const MONTHLY_INTEREST_RATE = 0.05;
+    const STORAGE_SAVINGS_RESET_DONE = "natillera_savings_reset_done_v1";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -409,6 +410,25 @@
             interes,
             total: validCapital + interes
         };
+    }
+
+    function resetAllSavingsToZeroIfNeeded() {
+        const alreadyReset = localStorage.getItem(STORAGE_SAVINGS_RESET_DONE) === "true";
+        if (alreadyReset) return;
+
+        const users = getUsers();
+        if (!users.length) {
+            localStorage.setItem(STORAGE_SAVINGS_RESET_DONE, "true");
+            return;
+        }
+
+        const usersReset = users.map(user => ({
+            ...user,
+            savings: 0
+        }));
+
+        saveUsers(usersReset);
+        localStorage.setItem(STORAGE_SAVINGS_RESET_DONE, "true");
     }
 
     function getBiometricStorageKey(documento) {
@@ -825,8 +845,8 @@
         if (users.length === 0) {
             users = [
                 { documento: "admin", nombres: "Administrador", apellidos: "General", celular: "000000000", password: "admin123", rol: "admin", savings: 0, mustChangePassword: false },
-                { documento: "tesorero1", nombres: "Carlos", apellidos: "Tesorero", celular: "311111111", password: "teso123", rol: "tesorero", savings: 50000, mustChangePassword: false },
-                { documento: "usuario1", nombres: "María", apellidos: "López", celular: "322222222", password: "user123", rol: "usuario", savings: 120000, mustChangePassword: false }
+                { documento: "tesorero1", nombres: "Carlos", apellidos: "Tesorero", celular: "311111111", password: "teso123", rol: "tesorero", savings: 0, mustChangePassword: false },
+                { documento: "usuario1", nombres: "María", apellidos: "López", celular: "322222222", password: "user123", rol: "usuario", savings: 0, mustChangePassword: false }
             ];
             saveData(STORAGE_USERS, users);
         }
@@ -1546,6 +1566,7 @@
         setCurrentUser(getSessionUser());
         initData();
         await initializeFirebaseOnlineMode();
+        resetAllSavingsToZeroIfNeeded();
         refreshCurrentUserFromState();
         renderApp();
         maybeShowContributionReminder();
