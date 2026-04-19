@@ -1,4 +1,4 @@
-const CACHE_NAME = "natillera-pwa-v1";
+const CACHE_NAME = "natillera-pwa-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -6,6 +6,7 @@ const APP_SHELL = [
   "./manifest.webmanifest",
   "./logo.jpeg",
   "./favicon.png",
+  "./icon-180.png",
   "./icon-192.png",
   "./icon-512.png"
 ];
