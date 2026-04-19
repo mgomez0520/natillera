@@ -332,7 +332,7 @@
         <!-- Aquí se renderiza login/registro o dashboard según sesión -->
     </div>
     <div id="appNotificationContainer" class="app-notification-container"></div>
-    <footer id="syncFooter">🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés</footer>
+    <footer id="syncFooter">🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% mensual acumulado</footer>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -346,6 +346,7 @@
     const STORAGE_SESSION_USER = "natillera_current_user";
     const STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX = "natillera_contribution_alert_last_shown";
     const STORAGE_BIOMETRIC_PREFIX = "natillera_biometric_credential";
+    const MONTHLY_INTEREST_RATE = 0.05;
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -392,6 +393,22 @@
 
     function saveLocalData(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function normalizeInstallments(value) {
+        const cuotas = parseInt(value, 10);
+        return Number.isFinite(cuotas) && cuotas > 0 ? cuotas : 1;
+    }
+
+    function calculateLoanValues(capital, cuotas) {
+        const validCapital = Number(capital) || 0;
+        const validCuotas = normalizeInstallments(cuotas);
+        const interes = validCapital * MONTHLY_INTEREST_RATE * validCuotas;
+        return {
+            cuotas: validCuotas,
+            interes,
+            total: validCapital + interes
+        };
     }
 
     function getBiometricStorageKey(documento) {
@@ -657,10 +674,10 @@
         const footer = document.getElementById("syncFooter");
         if (!footer) return;
         if (firebaseEnabled) {
-            footer.innerText = "☁️ Datos sincronizados con Firebase | Solo el tesorero registra ahorros | Préstamos +5% interés";
+            footer.innerText = "☁️ Datos sincronizados con Firebase | Solo el tesorero registra ahorros | Préstamos +5% mensual acumulado";
             return;
         }
-        footer.innerText = "🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés";
+        footer.innerText = "🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% mensual acumulado";
     }
 
     function getCurrentPayload() {
@@ -827,15 +844,28 @@
         let loans = loadData(STORAGE_LOANS, []);
         if (loans.length === 0) {
             // préstamo de ejemplo activo para usuario1
+            const loanPreview = calculateLoanValues(200000, 1);
             loans.push({
                 id: "loan1",
                 usuarioDoc: "usuario1",
                 capital: 200000,
-                interes: 10000,   // 5% de 200k
-                total: 210000,
+                cuotas: loanPreview.cuotas,
+                interes: loanPreview.interes,
+                total: loanPreview.total,
                 fecha: new Date().toISOString(),
                 estadoPago: "activo"
             });
+            saveData(STORAGE_LOANS, loans);
+        }
+        let loansNeedUpdate = false;
+        loans = loans.map(loan => {
+            if (typeof loan.cuotas === "undefined") {
+                loansNeedUpdate = true;
+                return { ...loan, cuotas: 1 };
+            }
+            return loan;
+        });
+        if (loansNeedUpdate) {
             saveData(STORAGE_LOANS, loans);
         }
         let requests = loadData(STORAGE_REQUESTS, []);
@@ -845,9 +875,21 @@
                 id: "req1",
                 usuarioDoc: "tesorero1",
                 monto: 150000,
+                cuotas: 1,
                 fechaSolicitud: new Date().toISOString(),
                 estado: "pendiente"
             });
+            saveData(STORAGE_REQUESTS, requests);
+        }
+        let requestsNeedUpdate = false;
+        requests = requests.map(req => {
+            if (typeof req.cuotas === "undefined") {
+                requestsNeedUpdate = true;
+                return { ...req, cuotas: 1 };
+            }
+            return req;
+        });
+        if (requestsNeedUpdate) {
             saveData(STORAGE_REQUESTS, requests);
         }
     }
@@ -1055,12 +1097,14 @@
                         <form id="solicitarPrestamoForm">
                             <label>Monto del préstamo ($):</label>
                             <input type="number" id="montoPrestamo" min="10000" step="1000" required placeholder="Ej: 200000">
+                            <label>Cuotas mensuales:</label>
+                            <input type="number" id="cuotasPrestamo" min="1" step="1" required placeholder="Ej: 4">
                             <button type="submit">Enviar solicitud</button>
                         </form>
                         <div id="prestamoMsg" class="alert hidden"></div>
                     </div>
                     <div class="card">
-                        <div class="card-title">📋 Mis préstamos activos (deuda + interés 5%)</div>
+                        <div class="card-title">📋 Mis préstamos activos (interés mensual acumulado 5%)</div>
                         <div id="misPrestamosLista">Cargando...</div>
                     </div>
                 </div>`;
@@ -1092,8 +1136,13 @@
             solicitarForm.addEventListener("submit", (e) => {
                 e.preventDefault();
                 const monto = parseFloat(document.getElementById("montoPrestamo").value);
+                const cuotas = normalizeInstallments(document.getElementById("cuotasPrestamo").value);
                 if (isNaN(monto) || monto < 10000) {
                     showMsg("prestamoMsg", "Monto mínimo $10,000", true);
+                    return;
+                }
+                if (cuotas < 1) {
+                    showMsg("prestamoMsg", "La cantidad de cuotas debe ser mínimo 1.", true);
                     return;
                 }
                 const requests = getRequests();
@@ -1107,6 +1156,7 @@
                     id: Date.now() + Math.random().toString(36),
                     usuarioDoc: currentUser.documento,
                     monto: monto,
+                    cuotas: cuotas,
                     fechaSolicitud: new Date().toISOString(),
                     estado: "pendiente"
                 };
@@ -1114,6 +1164,7 @@
                 saveRequests(requests);
                 showMsg("prestamoMsg", "✅ Solicitud enviada al tesorero.", false);
                 document.getElementById("montoPrestamo").value = "";
+                document.getElementById("cuotasPrestamo").value = "";
                 renderMisPrestamos(); // refrescar por si acaso
                 if (rol === "tesorero") renderTesoreroContent();
                 if (rol === "admin") renderAdminContent();
@@ -1141,12 +1192,13 @@
             return;
         }
         let totalDeuda = 0;
-        let htmlTable = `<table><tr><th>Capital</th><th>Interés (5%)</th><th>Total a deber</th><th>Fecha</th></tr>`;
+        let htmlTable = `<table><tr><th>Capital</th><th>Cuotas</th><th>Interés total</th><th>Total a deber</th><th>Fecha</th></tr>`;
         misPrestamos.forEach(p => {
             totalDeuda += p.total;
-            htmlTable += `<tr><td>$${formatMoney(p.capital)}</td><td>$${formatMoney(p.interes)}</td><td>$${formatMoney(p.total)}</td><td>${new Date(p.fecha).toLocaleDateString()}</td></tr>`;
+            const cuotas = normalizeInstallments(p.cuotas);
+            htmlTable += `<tr><td>$${formatMoney(p.capital)}</td><td>${cuotas}</td><td>$${formatMoney(p.interes)}</td><td>$${formatMoney(p.total)}</td><td>${new Date(p.fecha).toLocaleDateString()}</td></tr>`;
         });
-        htmlTable += `<tr style="background:#f1f5f9;"><td colspan="2"><strong>DEUDA TOTAL + INTERESES</strong></td><td colspan="2"><strong>$${formatMoney(totalDeuda)}</strong></td></tr>`;
+        htmlTable += `<tr style="background:#f1f5f9;"><td colspan="3"><strong>DEUDA TOTAL + INTERESES</strong></td><td colspan="2"><strong>$${formatMoney(totalDeuda)}</strong></td></tr>`;
         htmlTable += `</table>`;
         container.innerHTML = htmlTable;
     }
@@ -1202,17 +1254,17 @@
             let html = `<div class="card"><div class="card-title">📌 Solicitudes de préstamo pendientes</div>`;
             if (pendientes.length === 0) html += "<p>No hay solicitudes pendientes.</p>";
             else {
-                html += `<table><tr><th>Usuario (Doc)</th><th>Nombre</th><th>Monto solicitado</th><th>Interés 5%</th><th>Total a prestar</th><th>Acciones</th></tr>`;
+                html += `<table><tr><th>Usuario (Doc)</th><th>Nombre</th><th>Monto solicitado</th><th>Cuotas</th><th>Interés total</th><th>Total a prestar</th><th>Acciones</th></tr>`;
                 const users = getUsers();
                 pendientes.forEach(req => {
                     const user = users.find(u => u.documento === req.usuarioDoc);
                     const nombreCompleto = user ? `${user.nombres} ${user.apellidos}` : req.usuarioDoc;
-                    const interes = req.monto * 0.05;
-                    const total = req.monto + interes;
+                    const values = calculateLoanValues(req.monto, req.cuotas);
                     html += `<tr>
                                 <td>${req.usuarioDoc}</td><td>${nombreCompleto}</td>
-                                <td>$${formatMoney(req.monto)}</td><td>$${formatMoney(interes)}</td>
-                                <td>$${formatMoney(total)}</td>
+                                <td>$${formatMoney(req.monto)}</td><td>${values.cuotas}</td>
+                                <td>$${formatMoney(values.interes)}</td>
+                                <td>$${formatMoney(values.total)}</td>
                                 <td><button class="btn-success" data-id="${req.id}" data-aprobar="true">✅ Aprobar</button>
                                 <button class="btn-danger" data-id="${req.id}" data-rechazar="true">❌ Rechazar</button></td>
                              </tr>`;
@@ -1230,14 +1282,14 @@
                     if (reqIndex !== -1 && requestsUpdated[reqIndex].estado === "pendiente") {
                         const solicitud = requestsUpdated[reqIndex];
                         const monto = solicitud.monto;
-                        const interes = monto * 0.05;
-                        const total = monto + interes;
+                        const values = calculateLoanValues(monto, solicitud.cuotas);
                         const newLoan = {
                             id: Date.now() + Math.random().toString(36),
                             usuarioDoc: solicitud.usuarioDoc,
                             capital: monto,
-                            interes: interes,
-                            total: total,
+                            cuotas: values.cuotas,
+                            interes: values.interes,
+                            total: values.total,
                             fecha: new Date().toISOString(),
                             estadoPago: "activo"
                         };
@@ -1247,7 +1299,7 @@
                         // eliminar solicitud
                         requestsUpdated.splice(reqIndex, 1);
                         saveRequests(requestsUpdated);
-                        alert(`Préstamo aprobado por $${formatMoney(monto)} + intereses. Deuda total: $${formatMoney(total)}`);
+                        alert(`Préstamo aprobado por $${formatMoney(monto)} a ${values.cuotas} cuotas. Interés total: $${formatMoney(values.interes)}. Deuda total: $${formatMoney(values.total)}`);
                         renderTesoreroContent();
                         renderMisPrestamos();
                         if (currentUser.rol === "admin") renderAdminContent();
@@ -1272,7 +1324,7 @@
             let html = `<div class="card"><div class="card-title">📄 Préstamos activos - Registrar pago (eliminar deuda)</div>`;
             if (activos.length === 0) html += "<p>No hay préstamos activos pendientes.</p>";
             else {
-                html += `<table><tr><th>Usuario</th><th>Capital</th><th>Interés</th><th>Total adeudado</th><th>Fecha</th><th>Acción</th></tr>`;
+                html += `<table><tr><th>Usuario</th><th>Capital</th><th>Cuotas</th><th>Interés</th><th>Total adeudado</th><th>Fecha</th><th>Acción</th></tr>`;
                 const users = getUsers();
                 activos.forEach(loan => {
                     const user = users.find(u => u.documento === loan.usuarioDoc);
@@ -1280,6 +1332,7 @@
                     html += `<tr>
                                 <td>${nombre} (${loan.usuarioDoc})</td>
                                 <td>$${formatMoney(loan.capital)}</td>
+                                <td>${normalizeInstallments(loan.cuotas)}</td>
                                 <td>$${formatMoney(loan.interes)}</td>
                                 <td>$${formatMoney(loan.total)}</td>
                                 <td>${new Date(loan.fecha).toLocaleDateString()}</td>
@@ -1442,10 +1495,10 @@
             let html = `<div class="card"><div class="card-title">📋 Solicitudes pendientes (Admin puede ver, pero tesorero aprueba)</div>`;
             if (pendientes.length === 0) html += "<p>Sin solicitudes pendientes</p>";
             else {
-                html += `<table><tr><th>Usuario</th><th>Monto</th><th>Fecha</th></tr>`;
+                html += `<table><tr><th>Usuario</th><th>Monto</th><th>Cuotas</th><th>Fecha</th></tr>`;
                 pendientes.forEach(r => {
                     const user = users.find(u => u.documento === r.usuarioDoc);
-                    html += `<tr><td>${user ? user.nombres : r.usuarioDoc}</td><td>$${formatMoney(r.monto)}</td><td>${new Date(r.fechaSolicitud).toLocaleDateString()}</td></tr>`;
+                    html += `<tr><td>${user ? user.nombres : r.usuarioDoc}</td><td>$${formatMoney(r.monto)}</td><td>${normalizeInstallments(r.cuotas)}</td><td>${new Date(r.fechaSolicitud).toLocaleDateString()}</td></tr>`;
                 });
                 html += `</table><p><em>⚠️ Solo el tesorero puede aprobar/rechazar desde su panel.</em></p>`;
             }
@@ -1457,10 +1510,10 @@
             let html = `<div class="card"><div class="card-title">📊 Todos los préstamos activos</div>`;
             if (activos.length === 0) html += "<p>No hay préstamos activos</p>";
             else {
-                html += `<table><tr><th>Usuario</th><th>Capital</th><th>Interés</th><th>Total</th><th>Fecha</th></tr>`;
+                html += `<table><tr><th>Usuario</th><th>Capital</th><th>Cuotas</th><th>Interés</th><th>Total</th><th>Fecha</th></tr>`;
                 activos.forEach(l => {
                     const user = users.find(u => u.documento === l.usuarioDoc);
-                    html += `<tr><td>${user ? user.nombres : l.usuarioDoc}</td><td>$${formatMoney(l.capital)}</td><td>$${formatMoney(l.interes)}</td><td>$${formatMoney(l.total)}</td><td>${new Date(l.fecha).toLocaleDateString()}</td></tr>`;
+                    html += `<tr><td>${user ? user.nombres : l.usuarioDoc}</td><td>$${formatMoney(l.capital)}</td><td>${normalizeInstallments(l.cuotas)}</td><td>$${formatMoney(l.interes)}</td><td>$${formatMoney(l.total)}</td><td>${new Date(l.fecha).toLocaleDateString()}</td></tr>`;
                 });
                 html += `</table>`;
             }
