@@ -1,25 +1,881 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Natillera Familiar - Ahorros y Préstamos</title>
-    <link rel="stylesheet" href="./styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Natillera Familiar - Ahorros y Préstamos</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Natillera">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon.png?v=2">
+    <link rel="icon" type="image/png" sizes="192x192" href="./favicon.png?v=2">
+    <link rel="shortcut icon" href="./favicon.png?v=2">
+    <link rel="apple-touch-icon" href="./logo.jpeg?v=2">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <meta name="theme-color" content="#c9a63a">
+    <style>
+        :root {
+            --brand-gold: #c9a63a;
+            --brand-gold-soft: #f6e8b7;
+            --brand-green: #0f6154;
+            --brand-green-dark: #0a4a3f;
+            --brand-bg: #f8f1cf;
+            --brand-danger: #b53535;
+        }
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Roboto', sans-serif;
+        }
+        body {
+            background: radial-gradient(circle at top, #f9efc8 0%, var(--brand-bg) 35%, #efe1a8 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .app-container {
+            max-width: 1400px;
+            width: 100%;
+            background: #fffef8;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -12px rgba(15, 97, 84, 0.25);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        /* Header */
+        .app-header {
+            background: linear-gradient(120deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .brand-mark {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.65);
+            box-shadow: 0 0 0 3px rgba(201,166,58,0.35);
+            background: white;
+        }
+        .logo h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .logo p {
+            margin: 0;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255,255,255,0.13);
+            padding: 5px 15px;
+            border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.25);
+        }
+        .user-info span {
+            font-weight: 500;
+        }
+        .btn-logout {
+            background: var(--brand-danger);
+            border: none;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .btn-logout:hover {
+            background: #922525;
+        }
+        /* Contenido principal */
+        .main-content {
+            padding: 2rem;
+        }
+        /* Formularios y tarjetas */
+        .card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid #ecdca1;
+        }
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1.2rem;
+            color: var(--brand-green-dark);
+            border-left: 5px solid var(--brand-gold);
+            padding-left: 15px;
+        }
+        .grid-2cols {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.8rem;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        input, select, button {
+            padding: 10px 14px;
+            border-radius: 16px;
+            border: 1px solid #d5c57f;
+            font-size: 0.95rem;
+        }
+        button {
+            background: var(--brand-green);
+            color: white;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: var(--brand-green-dark);
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: #7a6a35;
+        }
+        .btn-success {
+            background: #2f8b5c;
+        }
+        .btn-danger {
+            background: #b91c1c;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background: #faf4dc;
+            font-weight: 600;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            background: #fdf5cf;
+            border-left: 5px solid var(--brand-gold);
+        }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+        .tab-btn {
+            background: transparent;
+            color: #2c3e50;
+            border: none;
+            font-weight: 500;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: var(--brand-green);
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+        .badge {
+            background: #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-admin { background: #b45309; color: white; }
+        .badge-tesorero { background: #2b6e9e; color: white; }
+        .badge-user { background: #4b5563; color: white; }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background: #faf5dc;
+            font-size: 0.75rem;
+            color: #4d5a52;
+        }
+        @media (max-width: 700px) {
+            .main-content { padding: 1rem; }
+            .app-header { padding: 1rem; }
+            .logo h1 { font-size: 1.2rem; }
+            .logo p { font-size: 0.75rem; }
+            .brand-mark { width: 44px; height: 44px; }
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+    </style>
 </head>
 <body>
 <div class="app-container" id="appRoot">
-  <header id="appHeader" style="display: none;">
-    <h1>Natillera Familiar</h1>
-    <div class="user-info">
-      <span id="currentUserSpan"></span>
-      <button id="logoutBtn" class="btn-logout">Cerrar sesión</button>
+    <div class="app-header">
+        <div class="logo">
+            <img src="./logo.jpeg" alt="Logo Natillera Familia Pulgarín" class="brand-mark">
+            <div>
+                <h1>Natillera Familia Pulgarín</h1>
+                <p>Ahorro colectivo • Préstamos solidarios</p>
+            </div>
+        </div>
+        <div id="sessionPanel" class="user-info hidden">
+            <span>👤 <span id="userNameDisplay"></span></span>
+            <button id="logoutBtn" class="btn-logout">Salir</button>
+        </div>
     </div>
-  </header>
-  <main id="appMain">
-    <div id="dynamicContent">Cargando...</div>
-  </main>
+    <div class="main-content" id="dynamicContent">
+        <!-- Aquí se renderiza login/registro o dashboard según sesión -->
+    </div>
+    <footer>🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés</footer>
 </div>
 
-  <script src="./app.js"></script>
+<script>
+    // ---------- STORAGE KEYS ----------
+    const STORAGE_USERS = "natillera_users";
+    const STORAGE_LOANS = "natillera_loans";
+    const STORAGE_REQUESTS = "natillera_loan_requests";
+
+    // ---------- DATA HELPERS ----------
+    function loadData(key, defaultValue) {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : defaultValue;
+    }
+    function saveData(key, data) {
+        localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    // ---------- Inicializar datos por defecto ----------
+    function initData() {
+        let users = loadData(STORAGE_USERS, []);
+        if (users.length === 0) {
+            users = [
+                { documento: "admin", nombres: "Administrador", apellidos: "General", celular: "000000000", password: "admin123", rol: "admin", savings: 0, mustChangePassword: false },
+                { documento: "tesorero1", nombres: "Carlos", apellidos: "Tesorero", celular: "311111111", password: "teso123", rol: "tesorero", savings: 50000, mustChangePassword: false },
+                { documento: "usuario1", nombres: "María", apellidos: "López", celular: "322222222", password: "user123", rol: "usuario", savings: 120000, mustChangePassword: false }
+            ];
+            saveData(STORAGE_USERS, users);
+        }
+        let usersNeedUpdate = false;
+        users = users.map(user => {
+            if (typeof user.mustChangePassword === "undefined") {
+                usersNeedUpdate = true;
+                return { ...user, mustChangePassword: false };
+            }
+            return user;
+        });
+        if (usersNeedUpdate) {
+            saveData(STORAGE_USERS, users);
+        }
+        let loans = loadData(STORAGE_LOANS, []);
+        if (loans.length === 0) {
+            // préstamo de ejemplo activo para usuario1
+            loans.push({
+                id: "loan1",
+                usuarioDoc: "usuario1",
+                capital: 200000,
+                interes: 10000,   // 5% de 200k
+                total: 210000,
+                fecha: new Date().toISOString(),
+                estadoPago: "activo"
+            });
+            saveData(STORAGE_LOANS, loans);
+        }
+        let requests = loadData(STORAGE_REQUESTS, []);
+        if (requests.length === 0) {
+            // solicitud ejemplo pendiente
+            requests.push({
+                id: "req1",
+                usuarioDoc: "tesorero1",
+                monto: 150000,
+                fechaSolicitud: new Date().toISOString(),
+                estado: "pendiente"
+            });
+            saveData(STORAGE_REQUESTS, requests);
+        }
+    }
+
+    // Funciones auxiliares para actualizar
+    function getUsers() { return loadData(STORAGE_USERS, []); }
+    function saveUsers(users) { saveData(STORAGE_USERS, users); }
+    function getLoans() { return loadData(STORAGE_LOANS, []); }
+    function saveLoans(loans) { saveData(STORAGE_LOANS, loans); }
+    function getRequests() { return loadData(STORAGE_REQUESTS, []); }
+    function saveRequests(requests) { saveData(STORAGE_REQUESTS, requests); }
+    function generateTemporaryPassword(length = 8) {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        let result = "";
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    // Sesión actual
+    let currentUser = null; // objeto usuario logueado
+
+    // ---------- RENDER PRINCIPAL (login/registro o dashboard) ----------
+    function renderApp() {
+        const container = document.getElementById("dynamicContent");
+        if (!currentUser) {
+            renderAuthScreen(container);
+        } else if (currentUser.mustChangePassword) {
+            renderForcePasswordChange(container);
+            updateSessionHeader();
+        } else {
+            renderDashboard(container);
+            updateSessionHeader();
+        }
+    }
+
+    function updateSessionHeader() {
+        const sessionPanel = document.getElementById("sessionPanel");
+        if (currentUser) {
+            sessionPanel.classList.remove("hidden");
+            document.getElementById("userNameDisplay").innerText = `${currentUser.nombres} ${currentUser.apellidos}`;
+        } else {
+            sessionPanel.classList.add("hidden");
+        }
+    }
+
+    // Pantalla de login / registro
+    function renderAuthScreen(container) {
+        container.innerHTML = `
+            <div class="grid-2cols">
+                <div class="card">
+                    <div class="card-title">🔐 Iniciar Sesión</div>
+                    <form id="loginForm">
+                        <input type="text" id="loginDoc" placeholder="Documento (usuario)" required>
+                        <input type="password" id="loginPass" placeholder="Contraseña" required>
+                        <button type="submit">Ingresar</button>
+                    </form>
+                    <div id="loginMsg" class="alert hidden"></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📝 Crear cuenta</div>
+                    <form id="registerForm">
+                        <input type="text" id="regDoc" placeholder="Documento (será tu usuario)" required>
+                        <input type="text" id="regNombres" placeholder="Nombres" required>
+                        <input type="text" id="regApellidos" placeholder="Apellidos" required>
+                        <input type="tel" id="regCelular" placeholder="Número de celular" required>
+                        <input type="password" id="regPassword" placeholder="Contraseña" required>
+                        <button type="submit">Crear cuenta</button>
+                    </form>
+                    <div id="regMsg" class="alert hidden"></div>
+                </div>
+            </div>
+        `;
+        document.getElementById("loginForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const doc = document.getElementById("loginDoc").value.trim();
+            const pass = document.getElementById("loginPass").value;
+            const users = getUsers();
+            const userFound = users.find(u => u.documento === doc && u.password === pass);
+            if (userFound) {
+                currentUser = { ...userFound };
+                renderApp();
+            } else {
+                const msgDiv = document.getElementById("loginMsg");
+                msgDiv.innerText = "❌ Documento o contraseña incorrectos.";
+                msgDiv.classList.remove("hidden");
+                setTimeout(() => msgDiv.classList.add("hidden"), 2500);
+            }
+        });
+        document.getElementById("registerForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const documento = document.getElementById("regDoc").value.trim();
+            const nombres = document.getElementById("regNombres").value.trim();
+            const apellidos = document.getElementById("regApellidos").value.trim();
+            const celular = document.getElementById("regCelular").value.trim();
+            const password = document.getElementById("regPassword").value;
+            if (!documento || !nombres || !apellidos || !celular || !password) {
+                showMsg("regMsg", "Todos los campos son obligatorios", true);
+                return;
+            }
+            const users = getUsers();
+            if (users.find(u => u.documento === documento)) {
+                showMsg("regMsg", "❌ El documento ya está registrado.", true);
+                return;
+            }
+            const newUser = {
+                documento, nombres, apellidos, celular, password,
+                rol: "usuario",
+                savings: 0,
+                mustChangePassword: false
+            };
+            users.push(newUser);
+            saveUsers(users);
+            showMsg("regMsg", "✅ Registro exitoso. ¡Ya puedes iniciar sesión!", false);
+            document.getElementById("registerForm").reset();
+            setTimeout(() => {
+                document.getElementById("regMsg").classList.add("hidden");
+            }, 2000);
+        });
+    }
+
+    function showMsg(elementId, text, isError) {
+        const div = document.getElementById(elementId);
+        if (!div) return;
+        div.innerText = text;
+        div.style.background = isError ? "#ffe6e6" : "#e0f7e8";
+        div.style.borderLeftColor = isError ? "#d32f2f" : "#2e7d32";
+        div.classList.remove("hidden");
+        setTimeout(() => div.classList.add("hidden"), 3000);
+    }
+
+    function renderForcePasswordChange(container) {
+        container.innerHTML = `
+            <div class="card" style="max-width: 620px; margin: 0 auto;">
+                <div class="card-title">🔒 Cambio obligatorio de contraseña</div>
+                <p>Tu contraseña fue restablecida por administración. Antes de continuar, debes crear una nueva.</p>
+                <form id="forceChangePassForm">
+                    <input type="password" id="newPasswordForced" placeholder="Nueva contraseña (mínimo 6 caracteres)" required>
+                    <input type="password" id="confirmPasswordForced" placeholder="Confirmar nueva contraseña" required>
+                    <button type="submit">Guardar y continuar</button>
+                </form>
+                <div id="forcePassMsg" class="alert hidden"></div>
+            </div>
+        `;
+
+        document.getElementById("forceChangePassForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const newPassword = document.getElementById("newPasswordForced").value;
+            const confirmPassword = document.getElementById("confirmPasswordForced").value;
+
+            if (newPassword.length < 6) {
+                showMsg("forcePassMsg", "La nueva contraseña debe tener al menos 6 caracteres.", true);
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                showMsg("forcePassMsg", "Las contraseñas no coinciden.", true);
+                return;
+            }
+
+            const users = getUsers();
+            const userIndex = users.findIndex(u => u.documento === currentUser.documento);
+            if (userIndex === -1) {
+                showMsg("forcePassMsg", "No se pudo actualizar la contraseña. Intenta iniciar sesión de nuevo.", true);
+                return;
+            }
+
+            users[userIndex].password = newPassword;
+            users[userIndex].mustChangePassword = false;
+            saveUsers(users);
+
+            currentUser.password = newPassword;
+            currentUser.mustChangePassword = false;
+            renderApp();
+        });
+    }
+
+    // ---------- DASHBOARD DINÁMICO SEGÚN ROL ----------
+    function renderDashboard(container) {
+        const rol = currentUser.rol;
+        let html = `
+            <div style="margin-bottom: 20px;">
+                <h2>✨ Bienvenido, ${currentUser.nombres} ${currentUser.apellidos}</h2>
+                <div class="card" style="background:#eef2ff;">
+                    <strong>💰 Mi ahorro actual:</strong> $${formatMoney(currentUser.savings)}<br>
+                    <small>📌 El tesorero registra los aportes de ahorro.</small>
+                </div>
+            </div>
+        `;
+        // Sección común para todos: solicitar préstamo + mis préstamos
+        html += `<div class="grid-2cols">
+                    <div class="card">
+                        <div class="card-title">📨 Solicitar préstamo</div>
+                        <form id="solicitarPrestamoForm">
+                            <label>Monto del préstamo ($):</label>
+                            <input type="number" id="montoPrestamo" min="10000" step="1000" required placeholder="Ej: 200000">
+                            <button type="submit">Enviar solicitud</button>
+                        </form>
+                        <div id="prestamoMsg" class="alert hidden"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">📋 Mis préstamos activos (deuda + interés 5%)</div>
+                        <div id="misPrestamosLista">Cargando...</div>
+                    </div>
+                </div>`;
+
+        // PESTAÑAS para tesorero y admin
+        if (rol === "tesorero") {
+            html += `<div class="tabs" id="tesoreroTabs">
+                        <button class="tab-btn active" data-tab="ahorros">➕ Registrar Ahorros</button>
+                        <button class="tab-btn" data-tab="solicitudes">📌 Tramitar Solicitudes</button>
+                        <button class="tab-btn" data-tab="prestamosActivos">📄 Préstamos Activos (Pagar)</button>
+                    </div>
+                    <div id="tabContentTesorero"></div>`;
+        } else if (rol === "admin") {
+            html += `<div class="tabs" id="adminTabs">
+                        <button class="tab-btn active" data-tab="gestionUsuarios">👥 Usuarios (Reset contraseña)</button>
+                        <button class="tab-btn" data-tab="solicitudesGlobal">📋 Solicitudes pendientes</button>
+                        <button class="tab-btn" data-tab="prestamosGlobal">💸 Todos los préstamos</button>
+                    </div>
+                    <div id="tabContentAdmin"></div>`;
+        }
+
+        container.innerHTML = html;
+        // Post-render: cargar "mis préstamos"
+        renderMisPrestamos();
+
+        // Evento solicitar préstamo
+        const solicitarForm = document.getElementById("solicitarPrestamoForm");
+        if (solicitarForm) {
+            solicitarForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const monto = parseFloat(document.getElementById("montoPrestamo").value);
+                if (isNaN(monto) || monto < 10000) {
+                    showMsg("prestamoMsg", "Monto mínimo $10,000", true);
+                    return;
+                }
+                const requests = getRequests();
+                // Evitar solicitud pendiente duplicada para el mismo usuario
+                const existingPending = requests.find(r => r.usuarioDoc === currentUser.documento && r.estado === "pendiente");
+                if (existingPending) {
+                    showMsg("prestamoMsg", "Ya tienes una solicitud pendiente. Espera respuesta.", true);
+                    return;
+                }
+                const newRequest = {
+                    id: Date.now() + Math.random().toString(36),
+                    usuarioDoc: currentUser.documento,
+                    monto: monto,
+                    fechaSolicitud: new Date().toISOString(),
+                    estado: "pendiente"
+                };
+                requests.push(newRequest);
+                saveRequests(requests);
+                showMsg("prestamoMsg", "✅ Solicitud enviada al tesorero.", false);
+                document.getElementById("montoPrestamo").value = "";
+                renderMisPrestamos(); // refrescar por si acaso
+                if (rol === "tesorero") renderTesoreroContent();
+                if (rol === "admin") renderAdminContent();
+            });
+        }
+
+        if (rol === "tesorero") {
+            renderTesoreroContent();
+            attachTabs("tesoreroTabs", "tabContentTesorero", ["ahorros", "solicitudes", "prestamosActivos"]);
+        } else if (rol === "admin") {
+            renderAdminContent();
+            attachTabs("adminTabs", "tabContentAdmin", ["gestionUsuarios", "solicitudesGlobal", "prestamosGlobal"]);
+        }
+    }
+
+    function formatMoney(value) { return new Intl.NumberFormat('es-CO').format(value); }
+
+    function renderMisPrestamos() {
+        const container = document.getElementById("misPrestamosLista");
+        if (!container) return;
+        const loans = getLoans();
+        const misPrestamos = loans.filter(l => l.usuarioDoc === currentUser.documento && l.estadoPago === "activo");
+        if (misPrestamos.length === 0) {
+            container.innerHTML = "<p>✅ No tienes préstamos activos.</p>";
+            return;
+        }
+        let totalDeuda = 0;
+        let htmlTable = `<table><tr><th>Capital</th><th>Interés (5%)</th><th>Total a deber</th><th>Fecha</th></tr>`;
+        misPrestamos.forEach(p => {
+            totalDeuda += p.total;
+            htmlTable += `<tr><td>$${formatMoney(p.capital)}</td><td>$${formatMoney(p.interes)}</td><td>$${formatMoney(p.total)}</td><td>${new Date(p.fecha).toLocaleDateString()}</td></tr>`;
+        });
+        htmlTable += `<tr style="background:#f1f5f9;"><td colspan="2"><strong>DEUDA TOTAL + INTERESES</strong></td><td colspan="2"><strong>$${formatMoney(totalDeuda)}</strong></td></tr>`;
+        htmlTable += `</table>`;
+        container.innerHTML = htmlTable;
+    }
+
+    // TESORERO: registrar ahorros, tramitar solicitudes, pagar préstamos
+    function renderTesoreroContent() {
+        const container = document.getElementById("tabContentTesorero");
+        if (!container) return;
+        const activeTab = document.querySelector("#tesoreroTabs .tab-btn.active")?.dataset.tab || "ahorros";
+        if (activeTab === "ahorros") {
+            const users = getUsers();
+            let html = `<div class="card"><div class="card-title">💰 Agregar ahorro a usuarios</div>
+                        <table><tr><th>Documento</th><th>Nombre</th><th>Ahorro actual</th><th>Agregar monto</th><th></th></tr>`;
+            users.forEach(user => {
+                html += `<tr>
+                            <td>${user.documento}</td>
+                            <td>${user.nombres} ${user.apellidos}</td>
+                            <td>$${formatMoney(user.savings)}</td>
+                            <td><input type="number" id="monto_${user.documento}" placeholder="Cantidad" min="1" step="1000" style="width:120px"></td>
+                            <td><button class="btn-success" data-doc="${user.documento}" data-action="agregarAhorro">➕ Añadir</button></td>
+                         </tr>`;
+            });
+            html += `</table></div>`;
+            container.innerHTML = html;
+            // eventos agregar ahorro
+            document.querySelectorAll("[data-action='agregarAhorro']").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    const doc = btn.getAttribute("data-doc");
+                    const input = document.getElementById(`monto_${doc}`);
+                    const monto = parseFloat(input.value);
+                    if (isNaN(monto) || monto <= 0) {
+                        alert("Ingrese un monto válido mayor a 0");
+                        return;
+                    }
+                    const usersUpdated = getUsers();
+                    const userIdx = usersUpdated.findIndex(u => u.documento === doc);
+                    if (userIdx !== -1) {
+                        usersUpdated[userIdx].savings += monto;
+                        saveUsers(usersUpdated);
+                        if (currentUser.documento === doc) currentUser.savings = usersUpdated[userIdx].savings;
+                        renderTesoreroContent();
+                        renderMisPrestamos();
+                        const headerSpan = document.getElementById("userNameDisplay");
+                        if (currentUser.documento === doc) updateSessionHeader();
+                        alert(`✅ Ahorro actualizado: +$${formatMoney(monto)} a ${doc}`);
+                    }
+                });
+            });
+        } 
+        else if (activeTab === "solicitudes") {
+            const requests = getRequests();
+            const pendientes = requests.filter(r => r.estado === "pendiente");
+            let html = `<div class="card"><div class="card-title">📌 Solicitudes de préstamo pendientes</div>`;
+            if (pendientes.length === 0) html += "<p>No hay solicitudes pendientes.</p>";
+            else {
+                html += `<table><tr><th>Usuario (Doc)</th><th>Nombre</th><th>Monto solicitado</th><th>Interés 5%</th><th>Total a prestar</th><th>Acciones</th></tr>`;
+                const users = getUsers();
+                pendientes.forEach(req => {
+                    const user = users.find(u => u.documento === req.usuarioDoc);
+                    const nombreCompleto = user ? `${user.nombres} ${user.apellidos}` : req.usuarioDoc;
+                    const interes = req.monto * 0.05;
+                    const total = req.monto + interes;
+                    html += `<tr>
+                                <td>${req.usuarioDoc}</td><td>${nombreCompleto}</td>
+                                <td>$${formatMoney(req.monto)}</td><td>$${formatMoney(interes)}</td>
+                                <td>$${formatMoney(total)}</td>
+                                <td><button class="btn-success" data-id="${req.id}" data-aprobar="true">✅ Aprobar</button>
+                                <button class="btn-danger" data-id="${req.id}" data-rechazar="true">❌ Rechazar</button></td>
+                             </tr>`;
+                });
+                html += `</table>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+            // eventos aprobar/rechazar
+            document.querySelectorAll("[data-aprobar]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const reqId = btn.getAttribute("data-id");
+                    let requestsUpdated = getRequests();
+                    const reqIndex = requestsUpdated.findIndex(r => r.id === reqId);
+                    if (reqIndex !== -1 && requestsUpdated[reqIndex].estado === "pendiente") {
+                        const solicitud = requestsUpdated[reqIndex];
+                        const monto = solicitud.monto;
+                        const interes = monto * 0.05;
+                        const total = monto + interes;
+                        const newLoan = {
+                            id: Date.now() + Math.random().toString(36),
+                            usuarioDoc: solicitud.usuarioDoc,
+                            capital: monto,
+                            interes: interes,
+                            total: total,
+                            fecha: new Date().toISOString(),
+                            estadoPago: "activo"
+                        };
+                        const loans = getLoans();
+                        loans.push(newLoan);
+                        saveLoans(loans);
+                        // eliminar solicitud
+                        requestsUpdated.splice(reqIndex, 1);
+                        saveRequests(requestsUpdated);
+                        alert(`Préstamo aprobado por $${formatMoney(monto)} + intereses. Deuda total: $${formatMoney(total)}`);
+                        renderTesoreroContent();
+                        renderMisPrestamos();
+                        if (currentUser.rol === "admin") renderAdminContent();
+                    }
+                });
+            });
+            document.querySelectorAll("[data-rechazar]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const reqId = btn.getAttribute("data-id");
+                    let requestsUpdated = getRequests();
+                    const newReqs = requestsUpdated.filter(r => r.id !== reqId);
+                    saveRequests(newReqs);
+                    alert("Solicitud rechazada.");
+                    renderTesoreroContent();
+                    if (currentUser.rol === "admin") renderAdminContent();
+                });
+            });
+        } 
+        else if (activeTab === "prestamosActivos") {
+            const loans = getLoans();
+            const activos = loans.filter(l => l.estadoPago === "activo");
+            let html = `<div class="card"><div class="card-title">📄 Préstamos activos - Registrar pago (eliminar deuda)</div>`;
+            if (activos.length === 0) html += "<p>No hay préstamos activos pendientes.</p>";
+            else {
+                html += `<table><tr><th>Usuario</th><th>Capital</th><th>Interés</th><th>Total adeudado</th><th>Fecha</th><th>Acción</th></tr>`;
+                const users = getUsers();
+                activos.forEach(loan => {
+                    const user = users.find(u => u.documento === loan.usuarioDoc);
+                    const nombre = user ? `${user.nombres} ${user.apellidos}` : loan.usuarioDoc;
+                    html += `<tr>
+                                <td>${nombre} (${loan.usuarioDoc})</td>
+                                <td>$${formatMoney(loan.capital)}</td>
+                                <td>$${formatMoney(loan.interes)}</td>
+                                <td>$${formatMoney(loan.total)}</td>
+                                <td>${new Date(loan.fecha).toLocaleDateString()}</td>
+                                <td><button class="btn-secondary" data-loan="${loan.id}" data-pagar="true">💰 Pagar / Liquidar</button></td>
+                            </tr>`;
+                });
+                html += `</table>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+            document.querySelectorAll("[data-pagar]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const loanId = btn.getAttribute("data-loan");
+                    let loansUpdated = getLoans();
+                    const loanIdx = loansUpdated.findIndex(l => l.id === loanId);
+                    if (loanIdx !== -1 && loansUpdated[loanIdx].estadoPago === "activo") {
+                        loansUpdated[loanIdx].estadoPago = "pagado";
+                        saveLoans(loansUpdated);
+                        alert("✅ Préstamo marcado como pagado. Deuda eliminada.");
+                        renderTesoreroContent();
+                        renderMisPrestamos();
+                        if (currentUser.rol === "admin") renderAdminContent();
+                    }
+                });
+            });
+        }
+    }
+
+    // ADMIN: resetear contraseñas, ver todo, gestionar solicitudes/prestamos
+    function renderAdminContent() {
+        const container = document.getElementById("tabContentAdmin");
+        if (!container) return;
+        const activeTab = document.querySelector("#adminTabs .tab-btn.active")?.dataset.tab || "gestionUsuarios";
+        const users = getUsers();
+        if (activeTab === "gestionUsuarios") {
+            let html = `<div class="card"><div class="card-title">👥 Gestión de usuarios (Resetear contraseña)</div>
+                        <table><tr><th>Documento</th><th>Nombres</th><th>Ahorro</th><th>Acción</th></tr>`;
+            users.forEach(user => {
+                html += `<tr>
+                            <td>${user.documento}</td>
+                            <td>${user.nombres} ${user.apellidos}</td>
+                            <td>$${formatMoney(user.savings)}</td>
+                            <td><button data-reset="${user.documento}" class="btn-secondary">🔁 Resetear</button></td>
+                         </tr>`;
+            });
+            html += `</table></div>`;
+            container.innerHTML = html;
+            document.querySelectorAll("[data-reset]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const doc = btn.getAttribute("data-reset");
+                    const newPassword = generateTemporaryPassword(8);
+                    const usersUp = getUsers();
+                    const idx = usersUp.findIndex(u => u.documento === doc);
+                    if (idx !== -1) {
+                        usersUp[idx].password = newPassword;
+                        usersUp[idx].mustChangePassword = true;
+                        saveUsers(usersUp);
+                        alert(`Contraseña temporal de ${doc}: ${newPassword}\n\nCompártela al usuario. Al ingresar, el sistema le exigirá cambiarla.`);
+                        if (currentUser.documento === doc) {
+                            currentUser.password = newPassword;
+                            currentUser.mustChangePassword = true;
+                            renderApp();
+                        }
+                    }
+                });
+            });
+        } else if (activeTab === "solicitudesGlobal") {
+            const requests = getRequests();
+            const pendientes = requests.filter(r => r.estado === "pendiente");
+            let html = `<div class="card"><div class="card-title">📋 Solicitudes pendientes (Admin puede ver, pero tesorero aprueba)</div>`;
+            if (pendientes.length === 0) html += "<p>Sin solicitudes pendientes</p>";
+            else {
+                html += `<table><tr><th>Usuario</th><th>Monto</th><th>Fecha</th></tr>`;
+                pendientes.forEach(r => {
+                    const user = users.find(u => u.documento === r.usuarioDoc);
+                    html += `<tr><td>${user ? user.nombres : r.usuarioDoc}</td><td>$${formatMoney(r.monto)}</td><td>${new Date(r.fechaSolicitud).toLocaleDateString()}</td></tr>`;
+                });
+                html += `</table><p><em>⚠️ Solo el tesorero puede aprobar/rechazar desde su panel.</em></p>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        } else if (activeTab === "prestamosGlobal") {
+            const loans = getLoans();
+            const activos = loans.filter(l => l.estadoPago === "activo");
+            let html = `<div class="card"><div class="card-title">📊 Todos los préstamos activos</div>`;
+            if (activos.length === 0) html += "<p>No hay préstamos activos</p>";
+            else {
+                html += `<table><tr><th>Usuario</th><th>Capital</th><th>Interés</th><th>Total</th><th>Fecha</th></tr>`;
+                activos.forEach(l => {
+                    const user = users.find(u => u.documento === l.usuarioDoc);
+                    html += `<tr><td>${user ? user.nombres : l.usuarioDoc}</td><td>$${formatMoney(l.capital)}</td><td>$${formatMoney(l.interes)}</td><td>$${formatMoney(l.total)}</td><td>${new Date(l.fecha).toLocaleDateString()}</td></tr>`;
+                });
+                html += `</table>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+    }
+
+    function attachTabs(tabsContainerId, contentContainerId, tabsIds) {
+        const tabsContainer = document.getElementById(tabsContainerId);
+        if (!tabsContainer) return;
+        const btns = tabsContainer.querySelectorAll(".tab-btn");
+        btns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                btns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                if (currentUser.rol === "tesorero") renderTesoreroContent();
+                else if (currentUser.rol === "admin") renderAdminContent();
+            });
+        });
+    }
+
+    // ---------- LOGOUT ----------
+    document.getElementById("logoutBtn")?.addEventListener("click", () => {
+        currentUser = null;
+        renderApp();
+    });
+    // Inicializar sistema
+    initData();
+    renderApp();
+
+    // refrescar global cuando se llama a funciones
+    window.renderTesoreroContent = renderTesoreroContent;
+    window.renderAdminContent = renderAdminContent;
+    window.renderMisPrestamos = renderMisPrestamos;
+
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./sw.js").catch((error) => {
+                console.error("No se pudo registrar el service worker:", error);
+            });
+        });
+    }
+</script>
 </body>
 </html>
