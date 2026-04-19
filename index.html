@@ -570,6 +570,17 @@
         }
     }
 
+    async function maybePromptBiometricEnrollmentOnLogin() {
+        if (!currentUser) return;
+        if (!(await canUseBiometrics())) return;
+        const existing = getBiometricCredential(currentUser.documento);
+        if (existing?.credentialId) return;
+
+        const wantsBiometric = confirm("¿Deseas activar el acceso con huella o Face ID para próximos ingresos en este dispositivo?");
+        if (!wantsBiometric) return;
+        await enrollBiometricForCurrentUser();
+    }
+
     function showAppNotification(message, durationMs = 7000) {
         const container = document.getElementById("appNotificationContainer");
         if (!container) return;
@@ -974,7 +985,7 @@
                 </div>
             </div>
         `;
-        document.getElementById("loginForm").addEventListener("submit", (e) => {
+        document.getElementById("loginForm").addEventListener("submit", async (e) => {
             e.preventDefault();
             const doc = document.getElementById("loginDoc").value.trim();
             const pass = document.getElementById("loginPass").value;
@@ -983,6 +994,7 @@
             if (userFound) {
                 setCurrentUser(userFound);
                 renderApp();
+                await maybePromptBiometricEnrollmentOnLogin();
             } else {
                 const msgDiv = document.getElementById("loginMsg");
                 msgDiv.innerText = "❌ Documento o contraseña incorrectos.";
@@ -1094,14 +1106,6 @@
                     <span class="label">💰 Mi ahorro actual</span>
                     <div class="amount">$${formatMoney(currentUser.savings)}</div>
                 </div>
-                <div class="card" style="background:#faf4dc; border:1px dashed #d8bb60;">
-                    <strong>🔐 Acceso biométrico</strong>
-                    <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-                        <button id="enableBiometricBtn" type="button" class="btn-success">Activar huella / Face ID</button>
-                        <button id="disableBiometricBtn" type="button" class="btn-secondary">Desactivar biometría</button>
-                    </div>
-                    <small style="display:block; margin-top:8px;">Se configura por usuario y por dispositivo.</small>
-                </div>
             </div>
         `;
         // Sección común para todos: solicitar préstamo + mis préstamos
@@ -1139,14 +1143,6 @@
         }
 
         container.innerHTML = html;
-        document.getElementById("enableBiometricBtn")?.addEventListener("click", async () => {
-            await enrollBiometricForCurrentUser();
-        });
-        document.getElementById("disableBiometricBtn")?.addEventListener("click", () => {
-            if (!currentUser) return;
-            removeBiometricCredential(currentUser.documento);
-            alert("Biometría desactivada para este usuario en este dispositivo.");
-        });
         // Post-render: cargar "mis préstamos"
         renderMisPrestamos();
 
