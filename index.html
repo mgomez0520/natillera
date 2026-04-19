@@ -257,22 +257,220 @@
     <div class="main-content" id="dynamicContent">
         <!-- Aquí se renderiza login/registro o dashboard según sesión -->
     </div>
-    <footer>🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés</footer>
+    <footer id="syncFooter">🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés</footer>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
     // ---------- STORAGE KEYS ----------
     const STORAGE_USERS = "natillera_users";
     const STORAGE_LOANS = "natillera_loans";
     const STORAGE_REQUESTS = "natillera_loan_requests";
 
-    // ---------- DATA HELPERS ----------
-    function loadData(key, defaultValue) {
+    // ---------- FIREBASE (configura con tu proyecto) ----------
+    const FIREBASE_CONFIG = {
+        apiKey: "REEMPLAZAR_API_KEY",
+        authDomain: "REEMPLAZAR_AUTH_DOMAIN",
+        projectId: "REEMPLAZAR_PROJECT_ID",
+        storageBucket: "REEMPLAZAR_STORAGE_BUCKET",
+        messagingSenderId: "REEMPLAZAR_MESSAGING_SENDER_ID",
+        appId: "REEMPLAZAR_APP_ID"
+    };
+    const FIREBASE_COLLECTION = "natillera";
+    const FIREBASE_DOCUMENT = "coreData";
+    const STORAGE_FIELD_MAP = {
+        [STORAGE_USERS]: "users",
+        [STORAGE_LOANS]: "loans",
+        [STORAGE_REQUESTS]: "requests"
+    };
+
+    let firebaseDb = null;
+    let firebaseEnabled = false;
+    let firebaseDocRef = null;
+    let firebaseUnsubscribe = null;
+    let syncTimer = null;
+    let applyingRemoteSnapshot = false;
+    const cloudState = {
+        users: [],
+        loans: [],
+        requests: []
+    };
+
+    function cloneData(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
+
+    function getStorageField(key) {
+        return STORAGE_FIELD_MAP[key] || null;
+    }
+
+    function loadLocalData(key, defaultValue) {
         const data = localStorage.getItem(key);
         return data ? JSON.parse(data) : defaultValue;
     }
-    function saveData(key, data) {
+
+    function saveLocalData(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function hasValidFirebaseConfig() {
+        return Object.values(FIREBASE_CONFIG).every((value) => value && !String(value).startsWith("REEMPLAZAR_"));
+    }
+
+    function syncCloudStateToLocalStorage() {
+        saveLocalData(STORAGE_USERS, cloudState.users);
+        saveLocalData(STORAGE_LOANS, cloudState.loans);
+        saveLocalData(STORAGE_REQUESTS, cloudState.requests);
+    }
+
+    function updateSyncFooter() {
+        const footer = document.getElementById("syncFooter");
+        if (!footer) return;
+        if (firebaseEnabled) {
+            footer.innerText = "☁️ Datos sincronizados con Firebase | Solo el tesorero registra ahorros | Préstamos +5% interés";
+            return;
+        }
+        footer.innerText = "🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés";
+    }
+
+    function getCurrentPayload() {
+        return {
+            users: getUsers(),
+            loans: getLoans(),
+            requests: getRequests(),
+            updatedAt: new Date().toISOString()
+        };
+    }
+
+    function scheduleCloudSync() {
+        if (!firebaseEnabled || !firebaseDocRef || applyingRemoteSnapshot) return;
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(async () => {
+            try {
+                await firebaseDocRef.set(getCurrentPayload(), { merge: true });
+            } catch (error) {
+                console.error("Error sincronizando cambios a Firebase:", error);
+            }
+        }, 300);
+    }
+
+    function refreshCurrentUserFromState() {
+        if (!currentUser) return;
+        const users = getUsers();
+        const updatedUser = users.find((u) => u.documento === currentUser.documento);
+        if (updatedUser) {
+            currentUser = { ...updatedUser };
+        } else {
+            currentUser = null;
+        }
+    }
+
+    function startFirebaseListener() {
+        if (!firebaseDocRef) return;
+        if (firebaseUnsubscribe) firebaseUnsubscribe();
+        firebaseUnsubscribe = firebaseDocRef.onSnapshot((snapshot) => {
+            if (!snapshot.exists) return;
+            const data = snapshot.data() || {};
+            const nextUsers = Array.isArray(data.users) ? data.users : [];
+            const nextLoans = Array.isArray(data.loans) ? data.loans : [];
+            const nextRequests = Array.isArray(data.requests) ? data.requests : [];
+            const hasChanges =
+                JSON.stringify(cloudState.users) !== JSON.stringify(nextUsers) ||
+                JSON.stringify(cloudState.loans) !== JSON.stringify(nextLoans) ||
+                JSON.stringify(cloudState.requests) !== JSON.stringify(nextRequests);
+
+            if (!hasChanges) return;
+
+            applyingRemoteSnapshot = true;
+            cloudState.users = cloneData(nextUsers);
+            cloudState.loans = cloneData(nextLoans);
+            cloudState.requests = cloneData(nextRequests);
+            syncCloudStateToLocalStorage();
+            refreshCurrentUserFromState();
+            renderApp();
+            applyingRemoteSnapshot = false;
+        }, (error) => {
+            console.error("Listener de Firebase falló:", error);
+        });
+    }
+
+    async function initializeFirebaseOnlineMode() {
+        if (typeof firebase === "undefined") {
+            console.warn("Firebase SDK no está disponible. Se mantiene modo local.");
+            updateSyncFooter();
+            return;
+        }
+        if (!hasValidFirebaseConfig()) {
+            console.warn("Config de Firebase pendiente. Completa FIREBASE_CONFIG para usar modo en línea.");
+            updateSyncFooter();
+            return;
+        }
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(FIREBASE_CONFIG);
+            }
+            firebaseDb = firebase.firestore();
+            firebaseDocRef = firebaseDb.collection(FIREBASE_COLLECTION).doc(FIREBASE_DOCUMENT);
+
+            const snapshot = await firebaseDocRef.get();
+            const localUsers = loadLocalData(STORAGE_USERS, []);
+            const localLoans = loadLocalData(STORAGE_LOANS, []);
+            const localRequests = loadLocalData(STORAGE_REQUESTS, []);
+
+            if (!snapshot.exists) {
+                cloudState.users = cloneData(localUsers);
+                cloudState.loans = cloneData(localLoans);
+                cloudState.requests = cloneData(localRequests);
+                await firebaseDocRef.set({
+                    users: cloudState.users,
+                    loans: cloudState.loans,
+                    requests: cloudState.requests,
+                    updatedAt: new Date().toISOString()
+                });
+            } else {
+                const data = snapshot.data() || {};
+                cloudState.users = Array.isArray(data.users) ? cloneData(data.users) : cloneData(localUsers);
+                cloudState.loans = Array.isArray(data.loans) ? cloneData(data.loans) : cloneData(localLoans);
+                cloudState.requests = Array.isArray(data.requests) ? cloneData(data.requests) : cloneData(localRequests);
+
+                if (!Array.isArray(data.users) || !Array.isArray(data.loans) || !Array.isArray(data.requests)) {
+                    await firebaseDocRef.set({
+                        users: cloudState.users,
+                        loans: cloudState.loans,
+                        requests: cloudState.requests,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+            }
+
+            syncCloudStateToLocalStorage();
+            firebaseEnabled = true;
+            updateSyncFooter();
+            startFirebaseListener();
+        } catch (error) {
+            firebaseEnabled = false;
+            console.error("No se pudo activar Firebase. Se mantiene modo local:", error);
+            updateSyncFooter();
+        }
+    }
+
+    // ---------- DATA HELPERS ----------
+    function loadData(key, defaultValue) {
+        const storageField = getStorageField(key);
+        if (firebaseEnabled && storageField) {
+            return cloneData(cloudState[storageField] || defaultValue);
+        }
+        return loadLocalData(key, defaultValue);
+    }
+    function saveData(key, data) {
+        saveLocalData(key, data);
+        const storageField = getStorageField(key);
+        if (firebaseEnabled && storageField) {
+            cloudState[storageField] = cloneData(data);
+            scheduleCloudSync();
+        }
     }
 
     // ---------- Inicializar datos por defecto ----------
@@ -860,9 +1058,17 @@
         currentUser = null;
         renderApp();
     });
+
+    async function bootstrapApp() {
+        initData();
+        await initializeFirebaseOnlineMode();
+        refreshCurrentUserFromState();
+        renderApp();
+        updateSyncFooter();
+    }
+
     // Inicializar sistema
-    initData();
-    renderApp();
+    bootstrapApp();
 
     // refrescar global cuando se llama a funciones
     window.renderTesoreroContent = renderTesoreroContent;
