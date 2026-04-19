@@ -228,24 +228,6 @@
         .hidden {
             display: none;
         }
-        .install-card {
-            margin: 0 2rem 1.5rem;
-            background: #fff6d5;
-            border: 1px solid #e5ca72;
-            border-radius: 18px;
-            padding: 0.9rem 1rem;
-            color: #3a3a2a;
-        }
-        .install-card p {
-            margin: 0.35rem 0;
-            font-size: 0.9rem;
-        }
-        .install-card .install-actions {
-            margin-top: 0.6rem;
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
         .app-notification-container {
             position: fixed;
             top: 18px;
@@ -314,7 +296,6 @@
         @media (max-width: 700px) {
             .main-content { padding: 1rem; }
             .app-header { padding: 1rem; }
-            .install-card { margin: 0 1rem 1rem; }
             .app-notification-container {
                 left: 10px;
                 right: 10px;
@@ -349,13 +330,6 @@
     </div>
     <div class="main-content" id="dynamicContent">
         <!-- Aquí se renderiza login/registro o dashboard según sesión -->
-    </div>
-    <div id="installCard" class="install-card hidden">
-        <p id="installText">📲 Puedes instalar esta app en tu dispositivo.</p>
-        <div class="install-actions">
-            <button id="installAppBtn" class="btn-success hidden" type="button">Instalar app</button>
-            <button id="installDismissBtn" class="btn-secondary" type="button">Ocultar</button>
-        </div>
     </div>
     <div id="appNotificationContainer" class="app-notification-container"></div>
     <footer id="syncFooter">🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés</footer>
@@ -396,7 +370,6 @@
     let firebaseUnsubscribe = null;
     let syncTimer = null;
     let applyingRemoteSnapshot = false;
-    let deferredInstallPrompt = null;
     const cloudState = {
         users: [],
         loans: [],
@@ -658,71 +631,6 @@
             return;
         }
         footer.innerText = "🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés";
-    }
-
-    function isIosDevice() {
-        return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-    }
-
-    function isAndroidDevice() {
-        return /android/i.test(window.navigator.userAgent);
-    }
-
-    function isStandalone() {
-        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    }
-
-    function setupInstallExperience() {
-        const installCard = document.getElementById("installCard");
-        const installText = document.getElementById("installText");
-        const installBtn = document.getElementById("installAppBtn");
-        const dismissBtn = document.getElementById("installDismissBtn");
-        if (!installCard || !installText || !installBtn || !dismissBtn) return;
-
-        const showAndroidManualInstall = () => {
-            installText.innerText = "🤖 En Android: abre en Chrome, toca menú ⋮ y elige 'Instalar app' o 'Agregar a pantalla principal'.";
-            installBtn.classList.add("hidden");
-            installCard.classList.remove("hidden");
-        };
-
-        dismissBtn.addEventListener("click", () => installCard.classList.add("hidden"));
-
-        installBtn.addEventListener("click", async () => {
-            if (!deferredInstallPrompt) return;
-            deferredInstallPrompt.prompt();
-            await deferredInstallPrompt.userChoice;
-            deferredInstallPrompt = null;
-            installCard.classList.add("hidden");
-            installBtn.classList.add("hidden");
-        });
-
-        window.addEventListener("beforeinstallprompt", (event) => {
-            event.preventDefault();
-            deferredInstallPrompt = event;
-            installText.innerText = "📲 Esta app está lista para instalarse en tu dispositivo.";
-            installBtn.classList.remove("hidden");
-            installCard.classList.remove("hidden");
-        });
-
-        window.addEventListener("appinstalled", () => {
-            deferredInstallPrompt = null;
-            installCard.classList.add("hidden");
-        });
-
-        if (isIosDevice() && !isStandalone()) {
-            installText.innerText = "📱 En iPhone/iPad: abre en Safari, toca Compartir y luego 'Agregar a pantalla de inicio'.";
-            installBtn.classList.add("hidden");
-            installCard.classList.remove("hidden");
-            return;
-        }
-
-        if (isAndroidDevice() && !isStandalone()) {
-            setTimeout(() => {
-                if (!deferredInstallPrompt) {
-                    showAndroidManualInstall();
-                }
-            }, 2500);
-        }
     }
 
     function getCurrentPayload() {
@@ -1554,7 +1462,6 @@
         initData();
         await initializeFirebaseOnlineMode();
         refreshCurrentUserFromState();
-        setupInstallExperience();
         renderApp();
         maybeShowContributionReminder();
         updateSyncFooter();
