@@ -226,6 +226,54 @@
             gap: 8px;
             flex-wrap: wrap;
         }
+        .app-notification-container {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: min(92vw, 420px);
+        }
+        .app-notification {
+            background: #fff9e6;
+            border: 1px solid #e3c768;
+            border-left: 6px solid var(--brand-gold);
+            color: #2d3226;
+            border-radius: 14px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.14);
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: slideInNotification 0.22s ease-out;
+        }
+        .app-notification-text {
+            font-size: 0.9rem;
+            line-height: 1.3;
+            font-weight: 600;
+        }
+        .app-notification-close {
+            margin-left: auto;
+            border: none;
+            background: transparent;
+            color: #7a6a35;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        @keyframes slideInNotification {
+            from {
+                transform: translateY(-8px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
         .badge {
             background: #e2e8f0;
             padding: 4px 12px;
@@ -247,6 +295,12 @@
             .main-content { padding: 1rem; }
             .app-header { padding: 1rem; }
             .install-card { margin: 0 1rem 1rem; }
+            .app-notification-container {
+                left: 10px;
+                right: 10px;
+                top: 10px;
+                max-width: none;
+            }
             .logo h1 { font-size: 1.2rem; }
             .logo p { font-size: 0.75rem; }
             .brand-mark { width: 44px; height: 44px; }
@@ -283,6 +337,7 @@
             <button id="installDismissBtn" class="btn-secondary" type="button">Ocultar</button>
         </div>
     </div>
+    <div id="appNotificationContainer" class="app-notification-container"></div>
     <footer id="syncFooter">🔐 Datos guardados localmente | Solo el tesorero registra ahorros | Préstamos +5% interés</footer>
 </div>
 
@@ -295,6 +350,7 @@
     const STORAGE_LOANS = "natillera_loans";
     const STORAGE_REQUESTS = "natillera_loan_requests";
     const STORAGE_SESSION_USER = "natillera_current_user";
+    const STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX = "natillera_contribution_alert_last_shown";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -341,6 +397,39 @@
 
     function saveLocalData(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function showAppNotification(message, durationMs = 7000) {
+        const container = document.getElementById("appNotificationContainer");
+        if (!container) return;
+
+        const item = document.createElement("div");
+        item.className = "app-notification";
+        item.innerHTML = `
+            <div class="app-notification-text">🔔 ${message}</div>
+            <button class="app-notification-close" aria-label="Cerrar notificación">✕</button>
+        `;
+
+        const closeBtn = item.querySelector(".app-notification-close");
+        closeBtn?.addEventListener("click", () => item.remove());
+
+        container.appendChild(item);
+        setTimeout(() => item.remove(), durationMs);
+    }
+
+    function maybeShowContributionReminder() {
+        const today = new Date();
+        const day = today.getDate();
+        if (day !== 15 && day !== 30) return;
+
+        const userScope = currentUser?.documento || "anonimo";
+        const storageKey = `${STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX}_${userScope}`;
+        const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const lastShown = localStorage.getItem(storageKey);
+        if (lastShown === todayKey) return;
+
+        showAppNotification("RECUERDA REALIZAR EL PAGO DE LOS APORTES DE LA NATILLERA QUE SE CUMPLEN HOY");
+        localStorage.setItem(storageKey, todayKey);
     }
 
     function getSessionUser() {
@@ -1279,6 +1368,7 @@
         refreshCurrentUserFromState();
         setupInstallExperience();
         renderApp();
+        maybeShowContributionReminder();
         updateSyncFooter();
     }
 
