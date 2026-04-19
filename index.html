@@ -118,6 +118,26 @@
             margin-bottom: 2rem;
             border: 1px solid #ecdca1;
         }
+        .savings-highlight {
+            background: linear-gradient(135deg, #fff6d5 0%, #ffe9a7 100%);
+            border: 2px solid #e0bf57;
+            box-shadow: 0 8px 18px rgba(201, 166, 58, 0.25);
+            text-align: center;
+            padding: 1.1rem 1rem;
+        }
+        .savings-highlight .label {
+            display: block;
+            color: #24413a;
+            font-weight: 700;
+            margin-bottom: 4px;
+            font-size: 1rem;
+        }
+        .savings-highlight .amount {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #0a4a3f;
+            line-height: 1.05;
+        }
         .card-title {
             font-size: 1.4rem;
             font-weight: 600;
@@ -351,6 +371,7 @@
     const STORAGE_REQUESTS = "natillera_loan_requests";
     const STORAGE_SESSION_USER = "natillera_current_user";
     const STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX = "natillera_contribution_alert_last_shown";
+    const STORAGE_BIOMETRIC_PREFIX = "natillera_biometric_credential";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -397,6 +418,156 @@
 
     function saveLocalData(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function getBiometricStorageKey(documento) {
+        return `${STORAGE_BIOMETRIC_PREFIX}_${documento}`;
+    }
+
+    function getBiometricCredential(documento) {
+        if (!documento) return null;
+        try {
+            const raw = localStorage.getItem(getBiometricStorageKey(documento));
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function saveBiometricCredential(documento, credential) {
+        localStorage.setItem(getBiometricStorageKey(documento), JSON.stringify(credential));
+    }
+
+    function removeBiometricCredential(documento) {
+        localStorage.removeItem(getBiometricStorageKey(documento));
+    }
+
+    function toBase64Url(bytes) {
+        const binary = Array.from(bytes, b => String.fromCharCode(b)).join("");
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+
+    function fromBase64Url(base64url) {
+        const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((base64url.length + 3) % 4);
+        const binary = atob(base64);
+        return Uint8Array.from(binary, char => char.charCodeAt(0));
+    }
+
+    function generateChallenge(length = 32) {
+        const bytes = new Uint8Array(length);
+        crypto.getRandomValues(bytes);
+        return bytes;
+    }
+
+    async function canUseBiometrics() {
+        if (!window.PublicKeyCredential || !navigator.credentials?.create || !navigator.credentials?.get) {
+            return false;
+        }
+        if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
+            return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        }
+        return true;
+    }
+
+    async function enrollBiometricForCurrentUser() {
+        if (!currentUser) {
+            alert("Primero debes iniciar sesión.");
+            return;
+        }
+        if (!(await canUseBiometrics())) {
+            alert("Este dispositivo o navegador no soporta biometría para esta app.");
+            return;
+        }
+
+        try {
+            const challenge = generateChallenge();
+            const userId = new TextEncoder().encode(`natillera:${currentUser.documento}`);
+
+            const credential = await navigator.credentials.create({
+                publicKey: {
+                    challenge,
+                    rp: { name: "Natillera Familia Pulgarín" },
+                    user: {
+                        id: userId,
+                        name: currentUser.documento,
+                        displayName: `${currentUser.nombres} ${currentUser.apellidos}`
+                    },
+                    pubKeyCredParams: [
+                        { type: "public-key", alg: -7 },
+                        { type: "public-key", alg: -257 }
+                    ],
+                    authenticatorSelection: {
+                        authenticatorAttachment: "platform",
+                        userVerification: "required",
+                        residentKey: "preferred"
+                    },
+                    timeout: 60000,
+                    attestation: "none"
+                }
+            });
+
+            if (!credential || !credential.rawId) {
+                alert("No se pudo registrar la biometría.");
+                return;
+            }
+
+            const credentialId = toBase64Url(new Uint8Array(credential.rawId));
+            saveBiometricCredential(currentUser.documento, {
+                credentialId,
+                createdAt: new Date().toISOString()
+            });
+            alert("✅ Biometría activada para este usuario en este dispositivo.");
+            renderApp();
+        } catch (error) {
+            console.error(error);
+            alert("No se pudo activar la biometría. Verifica permisos de huella/Face ID.");
+        }
+    }
+
+    async function loginWithBiometrics(documento) {
+        const doc = (documento || "").trim();
+        if (!doc) {
+            showMsg("loginMsg", "Ingresa tu documento para usar biometría.", true);
+            return;
+        }
+
+        const biometricData = getBiometricCredential(doc);
+        if (!biometricData?.credentialId) {
+            showMsg("loginMsg", "Este usuario no tiene biometría activada en este dispositivo.", true);
+            return;
+        }
+        if (!(await canUseBiometrics())) {
+            showMsg("loginMsg", "Este dispositivo o navegador no soporta biometría.", true);
+            return;
+        }
+
+        try {
+            const challenge = generateChallenge();
+            await navigator.credentials.get({
+                publicKey: {
+                    challenge,
+                    allowCredentials: [{
+                        id: fromBase64Url(biometricData.credentialId),
+                        type: "public-key"
+                    }],
+                    userVerification: "required",
+                    timeout: 60000
+                }
+            });
+
+            const users = getUsers();
+            const userFound = users.find(u => u.documento === doc);
+            if (!userFound) {
+                showMsg("loginMsg", "El usuario ya no existe en el sistema.", true);
+                return;
+            }
+
+            setCurrentUser(userFound);
+            renderApp();
+        } catch (error) {
+            console.error(error);
+            showMsg("loginMsg", "Autenticación biométrica cancelada o fallida.", true);
+        }
     }
 
     function showAppNotification(message, durationMs = 7000) {
@@ -786,6 +957,7 @@
                         <input type="password" id="loginPass" placeholder="Contraseña" required>
                         <button type="submit">Ingresar</button>
                     </form>
+                    <button id="biometricLoginBtn" type="button" class="btn-secondary" style="margin-top:8px;">🧬 Ingresar con huella / Face ID</button>
                     <div id="loginMsg" class="alert hidden"></div>
                 </div>
                 <div class="card">
@@ -817,6 +989,10 @@
                 msgDiv.classList.remove("hidden");
                 setTimeout(() => msgDiv.classList.add("hidden"), 2500);
             }
+        });
+        document.getElementById("biometricLoginBtn")?.addEventListener("click", async () => {
+            const doc = document.getElementById("loginDoc").value.trim();
+            await loginWithBiometrics(doc);
         });
         document.getElementById("registerForm").addEventListener("submit", (e) => {
             e.preventDefault();
@@ -914,9 +1090,17 @@
         let html = `
             <div style="margin-bottom: 20px;">
                 <h2>✨ Bienvenido, ${currentUser.nombres} ${currentUser.apellidos}</h2>
-                <div class="card" style="background:#eef2ff;">
-                    <strong>💰 Mi ahorro actual:</strong> $${formatMoney(currentUser.savings)}<br>
-                    <small>📌 El tesorero registra los aportes de ahorro.</small>
+                <div class="card savings-highlight">
+                    <span class="label">💰 Mi ahorro actual</span>
+                    <div class="amount">$${formatMoney(currentUser.savings)}</div>
+                </div>
+                <div class="card" style="background:#faf4dc; border:1px dashed #d8bb60;">
+                    <strong>🔐 Acceso biométrico</strong>
+                    <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                        <button id="enableBiometricBtn" type="button" class="btn-success">Activar huella / Face ID</button>
+                        <button id="disableBiometricBtn" type="button" class="btn-secondary">Desactivar biometría</button>
+                    </div>
+                    <small style="display:block; margin-top:8px;">Se configura por usuario y por dispositivo.</small>
                 </div>
             </div>
         `;
@@ -955,6 +1139,14 @@
         }
 
         container.innerHTML = html;
+        document.getElementById("enableBiometricBtn")?.addEventListener("click", async () => {
+            await enrollBiometricForCurrentUser();
+        });
+        document.getElementById("disableBiometricBtn")?.addEventListener("click", () => {
+            if (!currentUser) return;
+            removeBiometricCredential(currentUser.documento);
+            alert("Biometría desactivada para este usuario en este dispositivo.");
+        });
         // Post-render: cargar "mis préstamos"
         renderMisPrestamos();
 
