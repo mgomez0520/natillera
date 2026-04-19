@@ -1,8 +1,9 @@
 window.__FIREBASE_CONFIG__ = {
-  apiKey: "REEMPLAZAR_API_KEY",
-  authDomain: "REEMPLAZAR_AUTH_DOMAIN",
-  projectId: "REEMPLAZAR_PROJECT_ID",
-  storageBucket: "REEMPLAZAR_STORAGE_BUCKET",
-  messagingSenderId: "REEMPLAZAR_MESSAGING_SENDER_ID",
-  appId: "REEMPLAZAR_APP_ID"
+  apiKey: "AIzaSyBdhMfMBUTDKiMpMDP2AGaCgGgQ2nhE81c",
+  authDomain: "natillera-pulgarin.firebaseapp.com",
+  projectId: "natillera-pulgarin",
+  storageBucket: "natillera-pulgarin.firebasestorage.app",
+  messagingSenderId: "880434106518",
+  appId: "1:880434106518:web:791597fa0b972f0597b2b7",
+  measurementId: "G-MB18Y2NQ6W"
 };
