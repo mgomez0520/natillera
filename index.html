@@ -347,8 +347,7 @@
     const STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX = "natillera_contribution_alert_last_shown";
     const STORAGE_BIOMETRIC_PREFIX = "natillera_biometric_credential";
     const MONTHLY_INTEREST_RATE = 0.05;
-    const STORAGE_SAVINGS_RESET_DONE = "natillera_savings_reset_done_v1";
-    const STORAGE_LOANS_RESET_DONE = "natillera_loans_reset_done_v1";
+    const STORAGE_FINANCIAL_RESET_DONE = "natillera_financial_reset_done_v2";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -413,31 +412,20 @@
         };
     }
 
-    function resetAllSavingsToZeroIfNeeded() {
-        const alreadyReset = localStorage.getItem(STORAGE_SAVINGS_RESET_DONE) === "true";
+    function resetFinancialDataIfNeeded() {
+        const alreadyReset = localStorage.getItem(STORAGE_FINANCIAL_RESET_DONE) === "true";
         if (alreadyReset) return;
 
         const users = getUsers();
-        if (!users.length) {
-            localStorage.setItem(STORAGE_SAVINGS_RESET_DONE, "true");
-            return;
-        }
-
         const usersReset = users.map(user => ({
             ...user,
             savings: 0
         }));
 
         saveUsers(usersReset);
-        localStorage.setItem(STORAGE_SAVINGS_RESET_DONE, "true");
-    }
-
-    function resetAllLoansIfNeeded() {
-        const alreadyReset = localStorage.getItem(STORAGE_LOANS_RESET_DONE) === "true";
-        if (alreadyReset) return;
-
         saveLoans([]);
-        localStorage.setItem(STORAGE_LOANS_RESET_DONE, "true");
+        saveRequests([]);
+        localStorage.setItem(STORAGE_FINANCIAL_RESET_DONE, "true");
     }
 
     function getBiometricStorageKey(documento) {
@@ -884,18 +872,7 @@
             saveData(STORAGE_LOANS, loans);
         }
         let requests = loadData(STORAGE_REQUESTS, []);
-        if (requests.length === 0) {
-            // solicitud ejemplo pendiente
-            requests.push({
-                id: "req1",
-                usuarioDoc: "tesorero1",
-                monto: 150000,
-                cuotas: 1,
-                fechaSolicitud: new Date().toISOString(),
-                estado: "pendiente"
-            });
-            saveData(STORAGE_REQUESTS, requests);
-        }
+        if (requests.length === 0) saveData(STORAGE_REQUESTS, requests);
         let requestsNeedUpdate = false;
         requests = requests.map(req => {
             if (typeof req.cuotas === "undefined") {
@@ -1561,8 +1538,7 @@
         setCurrentUser(getSessionUser());
         initData();
         await initializeFirebaseOnlineMode();
-        resetAllSavingsToZeroIfNeeded();
-        resetAllLoansIfNeeded();
+        resetFinancialDataIfNeeded();
         refreshCurrentUserFromState();
         renderApp();
         maybeShowContributionReminder();
