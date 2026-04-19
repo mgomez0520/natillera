@@ -1074,14 +1074,17 @@
         const activeTab = document.querySelector("#adminTabs .tab-btn.active")?.dataset.tab || "gestionUsuarios";
         const users = getUsers();
         if (activeTab === "gestionUsuarios") {
-            let html = `<div class="card"><div class="card-title">👥 Gestión de usuarios (Resetear contraseña)</div>
+            let html = `<div class="card"><div class="card-title">👥 Gestión de usuarios (Resetear contraseña / Borrar)</div>
                         <table><tr><th>Documento</th><th>Nombres</th><th>Ahorro</th><th>Acción</th></tr>`;
             users.forEach(user => {
                 html += `<tr>
                             <td>${user.documento}</td>
                             <td>${user.nombres} ${user.apellidos}</td>
                             <td>$${formatMoney(user.savings)}</td>
-                            <td><button data-reset="${user.documento}" class="btn-secondary">🔁 Resetear</button></td>
+                            <td>
+                                <button data-reset="${user.documento}" class="btn-secondary">🔁 Resetear</button>
+                                <button data-delete-user="${user.documento}" class="btn-danger">🗑️ Borrar</button>
+                            </td>
                          </tr>`;
             });
             html += `</table></div>`;
@@ -1103,6 +1106,42 @@
                             renderApp();
                         }
                     }
+                });
+            });
+            document.querySelectorAll("[data-delete-user]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const doc = btn.getAttribute("data-delete-user");
+                    const usersUp = getUsers();
+                    const targetUser = usersUp.find(u => u.documento === doc);
+                    if (!targetUser) return;
+
+                    const adminsCount = usersUp.filter(u => u.rol === "admin").length;
+                    if (targetUser.rol === "admin" && adminsCount <= 1) {
+                        alert("No puedes borrar el único usuario administrador.");
+                        return;
+                    }
+
+                    const confirmDelete = confirm(`¿Seguro que deseas borrar el usuario ${doc}?\n\nTambién se eliminarán sus solicitudes y préstamos.`);
+                    if (!confirmDelete) return;
+
+                    const usersFiltered = usersUp.filter(u => u.documento !== doc);
+                    const loansFiltered = getLoans().filter(l => l.usuarioDoc !== doc);
+                    const requestsFiltered = getRequests().filter(r => r.usuarioDoc !== doc);
+
+                    saveUsers(usersFiltered);
+                    saveLoans(loansFiltered);
+                    saveRequests(requestsFiltered);
+
+                    if (currentUser && currentUser.documento === doc) {
+                        alert("Tu usuario fue eliminado. Se cerrará la sesión.");
+                        currentUser = null;
+                        renderApp();
+                        return;
+                    }
+
+                    alert(`✅ Usuario ${doc} eliminado correctamente.`);
+                    renderAdminContent();
+                    renderMisPrestamos();
                 });
             });
         } else if (activeTab === "solicitudesGlobal") {
