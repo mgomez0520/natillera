@@ -34,7 +34,7 @@ La app ya está preparada para sincronizar datos en tiempo real con **Cloud Fire
 
 ### 3) Pegar configuración en la app
 
-En `index.html`, busca el objeto `FIREBASE_CONFIG` y reemplaza:
+Abre `firebase-config.js` y reemplaza:
 
 - `REEMPLAZAR_API_KEY`
 - `REEMPLAZAR_AUTH_DOMAIN`
@@ -42,6 +42,8 @@ En `index.html`, busca el objeto `FIREBASE_CONFIG` y reemplaza:
 - `REEMPLAZAR_STORAGE_BUCKET`
 - `REEMPLAZAR_MESSAGING_SENDER_ID`
 - `REEMPLAZAR_APP_ID`
+
+> La app carga esa configuración automáticamente. Si no está completa, trabaja en modo local.
 
 ### 4) Estructura de datos usada en Firestore
 
@@ -60,17 +62,27 @@ Campos:
 - Si falta configuración o falla conexión: la app sigue en local (fallback).
 - Al activarse Firebase, los datos locales iniciales se suben a Firestore si el documento no existe.
 
-## Publicar y compartir link (opciones rápidas)
+## Publicar con Firebase Hosting (recomendado)
 
-### Opción A: GitHub Pages
-1. Subir estos archivos a un repositorio.
-2. Activar **Pages** en la rama principal.
-3. Compartir el link HTTPS generado.
+1. Instalar Firebase CLI.
+2. Iniciar sesión.
+3. Enlazar proyecto y desplegar.
 
-### Opción B: Netlify / Vercel
-1. Arrastrar esta carpeta al panel de despliegue.
-2. Obtener URL HTTPS automática.
-3. Compartir ese link.
+Comandos:
+
+```bash
+npm install -g firebase-tools
+firebase login
+firebase use --add
+firebase deploy --only hosting,firestore:rules
+```
+
+Al finalizar, Firebase entrega una URL HTTPS para compartir la app instalable.
+
+## Seguridad Firestore
+
+- Este repo incluye `firestore.rules` iniciales (modo abierto para pruebas).
+- Para producción se recomienda activar Firebase Auth y endurecer reglas por usuario/rol.
 
 ## Instalar en celular/escritorio
 

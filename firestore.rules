@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regla temporal para pruebas de integración.
+    // Recomendado: migrar a Firebase Auth y validar roles en reglas.
+    match /natillera/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

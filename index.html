@@ -262,6 +262,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="./firebase-config.js"></script>
 <script>
     // ---------- STORAGE KEYS ----------
     const STORAGE_USERS = "natillera_users";
@@ -269,7 +270,7 @@
     const STORAGE_REQUESTS = "natillera_loan_requests";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
-    const FIREBASE_CONFIG = {
+    const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
         apiKey: "REEMPLAZAR_API_KEY",
         authDomain: "REEMPLAZAR_AUTH_DOMAIN",
         projectId: "REEMPLAZAR_PROJECT_ID",
@@ -315,7 +316,13 @@
     }
 
     function hasValidFirebaseConfig() {
-        return Object.values(FIREBASE_CONFIG).every((value) => value && !String(value).startsWith("REEMPLAZAR_"));
+        const required = [
+            FIREBASE_CONFIG.apiKey,
+            FIREBASE_CONFIG.authDomain,
+            FIREBASE_CONFIG.projectId,
+            FIREBASE_CONFIG.appId
+        ];
+        return required.every((value) => value && !String(value).startsWith("REEMPLAZAR_"));
     }
 
     function syncCloudStateToLocalStorage() {
@@ -402,7 +409,7 @@
             return;
         }
         if (!hasValidFirebaseConfig()) {
-            console.warn("Config de Firebase pendiente. Completa FIREBASE_CONFIG para usar modo en línea.");
+            console.warn("Config de Firebase pendiente. Completa firebase-config.js para usar modo en línea.");
             updateSyncFooter();
             return;
         }

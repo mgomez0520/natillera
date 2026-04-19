@@ -2,6 +2,7 @@ const CACHE_NAME = "natillera-pwa-v1";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./firebase-config.js",
   "./manifest.webmanifest",
   "./logo.jpeg",
   "./favicon.png",
