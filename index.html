@@ -294,6 +294,7 @@
     const STORAGE_USERS = "natillera_users";
     const STORAGE_LOANS = "natillera_loans";
     const STORAGE_REQUESTS = "natillera_loan_requests";
+    const STORAGE_SESSION_USER = "natillera_current_user";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -340,6 +341,26 @@
 
     function saveLocalData(key, data) {
         localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    function getSessionUser() {
+        try {
+            const raw = sessionStorage.getItem(STORAGE_SESSION_USER);
+            return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+            console.warn("No se pudo leer la sesión guardada:", error);
+            return null;
+        }
+    }
+
+    function setCurrentUser(user) {
+        if (user) {
+            currentUser = { ...user };
+            sessionStorage.setItem(STORAGE_SESSION_USER, JSON.stringify(currentUser));
+            return;
+        }
+        currentUser = null;
+        sessionStorage.removeItem(STORAGE_SESSION_USER);
     }
 
     function hasValidFirebaseConfig() {
@@ -459,9 +480,9 @@
         const users = getUsers();
         const updatedUser = users.find((u) => u.documento === currentUser.documento);
         if (updatedUser) {
-            currentUser = { ...updatedUser };
+            setCurrentUser(updatedUser);
         } else {
-            currentUser = null;
+            setCurrentUser(null);
         }
     }
 
@@ -699,7 +720,7 @@
             const users = getUsers();
             const userFound = users.find(u => u.documento === doc && u.password === pass);
             if (userFound) {
-                currentUser = { ...userFound };
+                setCurrentUser(userFound);
                 renderApp();
             } else {
                 const msgDiv = document.getElementById("loginMsg");
@@ -789,8 +810,11 @@
             users[userIndex].mustChangePassword = false;
             saveUsers(users);
 
-            currentUser.password = newPassword;
-            currentUser.mustChangePassword = false;
+            setCurrentUser({
+                ...currentUser,
+                password: newPassword,
+                mustChangePassword: false
+            });
             renderApp();
         });
     }
@@ -1124,7 +1148,10 @@
                     saveUsers(usersUp);
 
                     if (currentUser && currentUser.documento === doc) {
-                        currentUser.rol = newRole;
+                        setCurrentUser({
+                            ...currentUser,
+                            rol: newRole
+                        });
                         alert(`✅ Tu rol fue actualizado a '${newRole}'. Se actualizará tu panel.`);
                         renderApp();
                         return;
@@ -1146,8 +1173,11 @@
                         saveUsers(usersUp);
                         alert(`Contraseña temporal de ${doc}: ${newPassword}\n\nCompártela al usuario. Al ingresar, el sistema le exigirá cambiarla.`);
                         if (currentUser.documento === doc) {
-                            currentUser.password = newPassword;
-                            currentUser.mustChangePassword = true;
+                            setCurrentUser({
+                                ...currentUser,
+                                password: newPassword,
+                                mustChangePassword: true
+                            });
                             renderApp();
                         }
                     }
@@ -1179,7 +1209,7 @@
 
                     if (currentUser && currentUser.documento === doc) {
                         alert("Tu usuario fue eliminado. Se cerrará la sesión.");
-                        currentUser = null;
+                        setCurrentUser(null);
                         renderApp();
                         return;
                     }
@@ -1238,11 +1268,12 @@
 
     // ---------- LOGOUT ----------
     document.getElementById("logoutBtn")?.addEventListener("click", () => {
-        currentUser = null;
+        setCurrentUser(null);
         renderApp();
     });
 
     async function bootstrapApp() {
+        setCurrentUser(getSessionUser());
         initData();
         await initializeFirebaseOnlineMode();
         refreshCurrentUserFromState();
