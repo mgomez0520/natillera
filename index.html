@@ -372,6 +372,10 @@
         return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     }
 
+    function isAndroidDevice() {
+        return /android/i.test(window.navigator.userAgent);
+    }
+
     function isStandalone() {
         return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     }
@@ -382,6 +386,12 @@
         const installBtn = document.getElementById("installAppBtn");
         const dismissBtn = document.getElementById("installDismissBtn");
         if (!installCard || !installText || !installBtn || !dismissBtn) return;
+
+        const showAndroidManualInstall = () => {
+            installText.innerText = "🤖 En Android: abre en Chrome, toca menú ⋮ y elige 'Instalar app' o 'Agregar a pantalla principal'.";
+            installBtn.classList.add("hidden");
+            installCard.classList.remove("hidden");
+        };
 
         dismissBtn.addEventListener("click", () => installCard.classList.add("hidden"));
 
@@ -411,6 +421,15 @@
             installText.innerText = "📱 En iPhone/iPad: abre en Safari, toca Compartir y luego 'Agregar a pantalla de inicio'.";
             installBtn.classList.add("hidden");
             installCard.classList.remove("hidden");
+            return;
+        }
+
+        if (isAndroidDevice() && !isStandalone()) {
+            setTimeout(() => {
+                if (!deferredInstallPrompt) {
+                    showAndroidManualInstall();
+                }
+            }, 2500);
         }
     }
 
