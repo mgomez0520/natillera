@@ -348,6 +348,7 @@
     const STORAGE_BIOMETRIC_PREFIX = "natillera_biometric_credential";
     const MONTHLY_INTEREST_RATE = 0.05;
     const STORAGE_SAVINGS_RESET_DONE = "natillera_savings_reset_done_v1";
+    const STORAGE_LOANS_RESET_DONE = "natillera_loans_reset_done_v1";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -429,6 +430,14 @@
 
         saveUsers(usersReset);
         localStorage.setItem(STORAGE_SAVINGS_RESET_DONE, "true");
+    }
+
+    function resetAllLoansIfNeeded() {
+        const alreadyReset = localStorage.getItem(STORAGE_LOANS_RESET_DONE) === "true";
+        if (alreadyReset) return;
+
+        saveLoans([]);
+        localStorage.setItem(STORAGE_LOANS_RESET_DONE, "true");
     }
 
     function getBiometricStorageKey(documento) {
@@ -862,21 +871,7 @@
             saveData(STORAGE_USERS, users);
         }
         let loans = loadData(STORAGE_LOANS, []);
-        if (loans.length === 0) {
-            // préstamo de ejemplo activo para usuario1
-            const loanPreview = calculateLoanValues(200000, 1);
-            loans.push({
-                id: "loan1",
-                usuarioDoc: "usuario1",
-                capital: 200000,
-                cuotas: loanPreview.cuotas,
-                interes: loanPreview.interes,
-                total: loanPreview.total,
-                fecha: new Date().toISOString(),
-                estadoPago: "activo"
-            });
-            saveData(STORAGE_LOANS, loans);
-        }
+        if (loans.length === 0) saveData(STORAGE_LOANS, loans);
         let loansNeedUpdate = false;
         loans = loans.map(loan => {
             if (typeof loan.cuotas === "undefined") {
@@ -1567,6 +1562,7 @@
         initData();
         await initializeFirebaseOnlineMode();
         resetAllSavingsToZeroIfNeeded();
+        resetAllLoansIfNeeded();
         refreshCurrentUserFromState();
         renderApp();
         maybeShowContributionReminder();
