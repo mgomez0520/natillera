@@ -343,6 +343,7 @@
     const STORAGE_USERS = "natillera_users";
     const STORAGE_LOANS = "natillera_loans";
     const STORAGE_REQUESTS = "natillera_loan_requests";
+    const STORAGE_GENERAL_SAVINGS = "natillera_general_savings";
     const STORAGE_SESSION_USER = "natillera_current_user";
     const STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX = "natillera_contribution_alert_last_shown";
     const STORAGE_BIOMETRIC_PREFIX = "natillera_biometric_credential";
@@ -363,7 +364,8 @@
     const STORAGE_FIELD_MAP = {
         [STORAGE_USERS]: "users",
         [STORAGE_LOANS]: "loans",
-        [STORAGE_REQUESTS]: "requests"
+        [STORAGE_REQUESTS]: "requests",
+        [STORAGE_GENERAL_SAVINGS]: "generalSavings"
     };
 
     let firebaseDb = null;
@@ -376,7 +378,8 @@
     const cloudState = {
         users: [],
         loans: [],
-        requests: []
+        requests: [],
+        generalSavings: []
     };
 
     function cloneData(value) {
@@ -425,6 +428,7 @@
         saveUsers(usersReset);
         saveLoans([]);
         saveRequests([]);
+        saveGeneralSavings([]);
         localStorage.setItem(STORAGE_FINANCIAL_RESET_DONE, "true");
     }
 
@@ -685,6 +689,7 @@
         saveLocalData(STORAGE_USERS, cloudState.users);
         saveLocalData(STORAGE_LOANS, cloudState.loans);
         saveLocalData(STORAGE_REQUESTS, cloudState.requests);
+        saveLocalData(STORAGE_GENERAL_SAVINGS, cloudState.generalSavings);
     }
 
     function updateSyncFooter() {
@@ -702,6 +707,7 @@
             users: getUsers(),
             loans: getLoans(),
             requests: getRequests(),
+            generalSavings: getGeneralSavings(),
             updatedAt: new Date().toISOString()
         };
     }
@@ -738,10 +744,12 @@
             const nextUsers = Array.isArray(data.users) ? data.users : [];
             const nextLoans = Array.isArray(data.loans) ? data.loans : [];
             const nextRequests = Array.isArray(data.requests) ? data.requests : [];
+            const nextGeneralSavings = Array.isArray(data.generalSavings) ? data.generalSavings : [];
             const hasChanges =
                 JSON.stringify(cloudState.users) !== JSON.stringify(nextUsers) ||
                 JSON.stringify(cloudState.loans) !== JSON.stringify(nextLoans) ||
-                JSON.stringify(cloudState.requests) !== JSON.stringify(nextRequests);
+                JSON.stringify(cloudState.requests) !== JSON.stringify(nextRequests) ||
+                JSON.stringify(cloudState.generalSavings) !== JSON.stringify(nextGeneralSavings);
 
             if (!hasChanges) return;
 
@@ -749,6 +757,7 @@
             cloudState.users = cloneData(nextUsers);
             cloudState.loans = cloneData(nextLoans);
             cloudState.requests = cloneData(nextRequests);
+            cloudState.generalSavings = cloneData(nextGeneralSavings);
             syncCloudStateToLocalStorage();
             refreshCurrentUserFromState();
             renderApp();
@@ -781,15 +790,18 @@
             const localUsers = loadLocalData(STORAGE_USERS, []);
             const localLoans = loadLocalData(STORAGE_LOANS, []);
             const localRequests = loadLocalData(STORAGE_REQUESTS, []);
+            const localGeneralSavings = loadLocalData(STORAGE_GENERAL_SAVINGS, []);
 
             if (!snapshot.exists) {
                 cloudState.users = cloneData(localUsers);
                 cloudState.loans = cloneData(localLoans);
                 cloudState.requests = cloneData(localRequests);
+                cloudState.generalSavings = cloneData(localGeneralSavings);
                 await firebaseDocRef.set({
                     users: cloudState.users,
                     loans: cloudState.loans,
                     requests: cloudState.requests,
+                    generalSavings: cloudState.generalSavings,
                     updatedAt: new Date().toISOString()
                 });
             } else {
@@ -797,12 +809,14 @@
                 cloudState.users = Array.isArray(data.users) ? cloneData(data.users) : cloneData(localUsers);
                 cloudState.loans = Array.isArray(data.loans) ? cloneData(data.loans) : cloneData(localLoans);
                 cloudState.requests = Array.isArray(data.requests) ? cloneData(data.requests) : cloneData(localRequests);
+                cloudState.generalSavings = Array.isArray(data.generalSavings) ? cloneData(data.generalSavings) : cloneData(localGeneralSavings);
 
-                if (!Array.isArray(data.users) || !Array.isArray(data.loans) || !Array.isArray(data.requests)) {
+                if (!Array.isArray(data.users) || !Array.isArray(data.loans) || !Array.isArray(data.requests) || !Array.isArray(data.generalSavings)) {
                     await firebaseDocRef.set({
                         users: cloudState.users,
                         loans: cloudState.loans,
                         requests: cloudState.requests,
+                        generalSavings: cloudState.generalSavings,
                         updatedAt: new Date().toISOString()
                     }, { merge: true });
                 }
@@ -884,6 +898,11 @@
         if (requestsNeedUpdate) {
             saveData(STORAGE_REQUESTS, requests);
         }
+        let generalSavings = loadData(STORAGE_GENERAL_SAVINGS, []);
+        if (!Array.isArray(generalSavings)) {
+            generalSavings = [];
+        }
+        saveData(STORAGE_GENERAL_SAVINGS, generalSavings);
     }
 
     // Funciones auxiliares para actualizar
@@ -893,6 +912,8 @@
     function saveLoans(loans) { saveData(STORAGE_LOANS, loans); }
     function getRequests() { return loadData(STORAGE_REQUESTS, []); }
     function saveRequests(requests) { saveData(STORAGE_REQUESTS, requests); }
+    function getGeneralSavings() { return loadData(STORAGE_GENERAL_SAVINGS, []); }
+    function saveGeneralSavings(records) { saveData(STORAGE_GENERAL_SAVINGS, records); }
     function generateTemporaryPassword(length = 8) {
         const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
         let result = "";
@@ -1107,6 +1128,7 @@
                         <button class="tab-btn active" data-tab="ahorros">➕ Registrar Ahorros</button>
                         <button class="tab-btn" data-tab="solicitudes">📌 Tramitar Solicitudes</button>
                         <button class="tab-btn" data-tab="prestamosActivos">📄 Préstamos Activos (Pagar)</button>
+                        <button class="tab-btn" data-tab="ahorroGeneral">🏦 Ahorro General</button>
                     </div>
                     <div id="tabContentTesorero"></div>`;
         } else if (rol === "admin") {
@@ -1165,7 +1187,7 @@
 
         if (rol === "tesorero") {
             renderTesoreroContent();
-            attachTabs("tesoreroTabs", "tabContentTesorero", ["ahorros", "solicitudes", "prestamosActivos"]);
+            attachTabs("tesoreroTabs", "tabContentTesorero", ["ahorros", "solicitudes", "prestamosActivos", "ahorroGeneral"]);
         } else if (rol === "admin") {
             renderAdminContent();
             attachTabs("adminTabs", "tabContentAdmin", ["gestionUsuarios", "solicitudesGlobal", "prestamosGlobal"]);
@@ -1349,6 +1371,84 @@
                         if (currentUser.rol === "admin") renderAdminContent();
                     }
                 });
+            });
+        }
+        else if (activeTab === "ahorroGeneral") {
+            const records = getGeneralSavings();
+            const ordered = [...records].sort((a, b) => new Date(b.fechaActividad || b.createdAt) - new Date(a.fechaActividad || a.createdAt));
+            const totalGanancias = ordered.reduce((acc, item) => acc + (Number(item.valor) || 0), 0);
+            const today = new Date().toISOString().split("T")[0];
+
+            let html = `<div class="card">
+                            <div class="card-title">🏦 Ahorro general (ganancias por rifas y actividades)</div>
+                            <form id="ahorroGeneralForm" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; align-items:end; margin-bottom:14px;">
+                                <div>
+                                    <label>Valor que se guardará ($):</label>
+                                    <input type="number" id="generalValor" min="1" step="1000" required placeholder="Ej: 50000">
+                                </div>
+                                <div>
+                                    <label>Actividad:</label>
+                                    <input type="text" id="generalActividad" required placeholder="Ej: Rifa de domingo">
+                                </div>
+                                <div>
+                                    <label>Fecha de la actividad:</label>
+                                    <input type="date" id="generalFecha" required value="${today}">
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn-success">💾 Guardar ganancia</button>
+                                </div>
+                            </form>
+                            <p><strong>Total ahorro general:</strong> $${formatMoney(totalGanancias)}</p>`;
+
+            if (ordered.length === 0) {
+                html += "<p>Aún no hay ganancias registradas en el ahorro general.</p>";
+            } else {
+                html += `<table>
+                            <tr><th>Valor</th><th>Actividad</th><th>Fecha actividad</th><th>Registrado por</th></tr>`;
+                ordered.forEach(item => {
+                    html += `<tr>
+                                <td>$${formatMoney(item.valor)}</td>
+                                <td>${item.actividad}</td>
+                                <td>${new Date(item.fechaActividad).toLocaleDateString()}</td>
+                                <td>${item.registradoPor || "—"}</td>
+                             </tr>`;
+                });
+                html += `</table>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+
+            document.getElementById("ahorroGeneralForm")?.addEventListener("submit", (e) => {
+                e.preventDefault();
+                const valor = Number(document.getElementById("generalValor")?.value || 0);
+                const actividad = (document.getElementById("generalActividad")?.value || "").trim();
+                const fechaActividad = document.getElementById("generalFecha")?.value;
+
+                if (!valor || valor <= 0) {
+                    alert("Ingresa un valor válido mayor a 0.");
+                    return;
+                }
+                if (!actividad) {
+                    alert("Ingresa la actividad.");
+                    return;
+                }
+                if (!fechaActividad) {
+                    alert("Selecciona la fecha de la actividad.");
+                    return;
+                }
+
+                const updated = getGeneralSavings();
+                updated.push({
+                    id: Date.now() + Math.random().toString(36),
+                    valor,
+                    actividad,
+                    fechaActividad,
+                    registradoPor: `${currentUser.nombres} ${currentUser.apellidos}`,
+                    createdAt: new Date().toISOString()
+                });
+                saveGeneralSavings(updated);
+                alert("✅ Ganancia guardada en Ahorro General.");
+                renderTesoreroContent();
             });
         }
     }
