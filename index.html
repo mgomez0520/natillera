@@ -370,6 +370,7 @@
     let firebaseUnsubscribe = null;
     let syncTimer = null;
     let applyingRemoteSnapshot = false;
+    let hasTriedAutoBiometricLogin = false;
     const cloudState = {
         users: [],
         loans: [],
@@ -405,6 +406,17 @@
         } catch {
             return null;
         }
+    }
+
+    function getBiometricDocuments() {
+        const docs = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(`${STORAGE_BIOMETRIC_PREFIX}_`)) continue;
+            const doc = key.replace(`${STORAGE_BIOMETRIC_PREFIX}_`, "");
+            if (doc) docs.push(doc);
+        }
+        return docs;
     }
 
     function saveBiometricCredential(documento, credential) {
@@ -497,20 +509,21 @@
         }
     }
 
-    async function loginWithBiometrics(documento) {
+    async function loginWithBiometrics(documento, options = {}) {
+        const { silentErrors = false } = options;
         const doc = (documento || "").trim();
         if (!doc) {
-            showMsg("loginMsg", "Ingresa tu documento para usar biometría.", true);
+            if (!silentErrors) showMsg("loginMsg", "Ingresa tu documento para usar biometría.", true);
             return;
         }
 
         const biometricData = getBiometricCredential(doc);
         if (!biometricData?.credentialId) {
-            showMsg("loginMsg", "Este usuario no tiene biometría activada en este dispositivo.", true);
+            if (!silentErrors) showMsg("loginMsg", "Este usuario no tiene biometría activada en este dispositivo.", true);
             return;
         }
         if (!(await canUseBiometrics())) {
-            showMsg("loginMsg", "Este dispositivo o navegador no soporta biometría.", true);
+            if (!silentErrors) showMsg("loginMsg", "Este dispositivo o navegador no soporta biometría.", true);
             return;
         }
 
@@ -531,7 +544,7 @@
             const users = getUsers();
             const userFound = users.find(u => u.documento === doc);
             if (!userFound) {
-                showMsg("loginMsg", "El usuario ya no existe en el sistema.", true);
+                if (!silentErrors) showMsg("loginMsg", "El usuario ya no existe en el sistema.", true);
                 return;
             }
 
@@ -539,8 +552,25 @@
             renderApp();
         } catch (error) {
             console.error(error);
-            showMsg("loginMsg", "Autenticación biométrica cancelada o fallida.", true);
+            if (!silentErrors) showMsg("loginMsg", "Autenticación biométrica cancelada o fallida.", true);
         }
+    }
+
+    async function maybeAutoBiometricLogin() {
+        if (currentUser || hasTriedAutoBiometricLogin) return;
+        if (!(await canUseBiometrics())) return;
+
+        const biometricDocs = getBiometricDocuments();
+        if (biometricDocs.length !== 1) return;
+
+        const [doc] = biometricDocs;
+        const userExists = getUsers().some(u => u.documento === doc);
+        if (!userExists) return;
+
+        hasTriedAutoBiometricLogin = true;
+        const loginDocInput = document.getElementById("loginDoc");
+        if (loginDocInput) loginDocInput.value = doc;
+        await loginWithBiometrics(doc, { silentErrors: true });
     }
 
     async function maybePromptBiometricEnrollmentOnLogin() {
@@ -944,6 +974,8 @@
                 document.getElementById("regMsg").classList.add("hidden");
             }, 2000);
         });
+
+        maybeAutoBiometricLogin();
     }
 
     function showMsg(elementId, text, isError) {
