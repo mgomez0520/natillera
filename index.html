@@ -1075,13 +1075,21 @@
         const users = getUsers();
         if (activeTab === "gestionUsuarios") {
             let html = `<div class="card"><div class="card-title">👥 Gestión de usuarios (Resetear contraseña / Borrar)</div>
-                        <table><tr><th>Documento</th><th>Nombres</th><th>Ahorro</th><th>Acción</th></tr>`;
+                        <table><tr><th>Documento</th><th>Nombres</th><th>Rol</th><th>Ahorro</th><th>Acción</th></tr>`;
             users.forEach(user => {
                 html += `<tr>
                             <td>${user.documento}</td>
                             <td>${user.nombres} ${user.apellidos}</td>
+                            <td>
+                                <select id="role_${user.documento}" style="min-width:120px;">
+                                    <option value="usuario" ${user.rol === "usuario" ? "selected" : ""}>usuario</option>
+                                    <option value="tesorero" ${user.rol === "tesorero" ? "selected" : ""}>tesorero</option>
+                                    <option value="admin" ${user.rol === "admin" ? "selected" : ""}>admin</option>
+                                </select>
+                            </td>
                             <td>$${formatMoney(user.savings)}</td>
                             <td>
+                                <button data-save-role="${user.documento}" class="btn-success">💾 Guardar rol</button>
                                 <button data-reset="${user.documento}" class="btn-secondary">🔁 Resetear</button>
                                 <button data-delete-user="${user.documento}" class="btn-danger">🗑️ Borrar</button>
                             </td>
@@ -1089,6 +1097,43 @@
             });
             html += `</table></div>`;
             container.innerHTML = html;
+            document.querySelectorAll("[data-save-role]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const doc = btn.getAttribute("data-save-role");
+                    const roleInput = document.getElementById(`role_${doc}`);
+                    if (!roleInput) return;
+                    const newRole = roleInput.value;
+                    const usersUp = getUsers();
+                    const idx = usersUp.findIndex(u => u.documento === doc);
+                    if (idx === -1) return;
+
+                    const oldRole = usersUp[idx].rol;
+                    if (oldRole === newRole) {
+                        alert("Este usuario ya tiene ese rol.");
+                        return;
+                    }
+
+                    const adminsCount = usersUp.filter(u => u.rol === "admin").length;
+                    if (oldRole === "admin" && newRole !== "admin" && adminsCount <= 1) {
+                        alert("No puedes quitar el rol al único administrador.");
+                        roleInput.value = oldRole;
+                        return;
+                    }
+
+                    usersUp[idx].rol = newRole;
+                    saveUsers(usersUp);
+
+                    if (currentUser && currentUser.documento === doc) {
+                        currentUser.rol = newRole;
+                        alert(`✅ Tu rol fue actualizado a '${newRole}'. Se actualizará tu panel.`);
+                        renderApp();
+                        return;
+                    }
+
+                    alert(`✅ Rol de ${doc} actualizado a '${newRole}'.`);
+                    renderAdminContent();
+                });
+            });
             document.querySelectorAll("[data-reset]").forEach(btn => {
                 btn.addEventListener("click", () => {
                     const doc = btn.getAttribute("data-reset");
