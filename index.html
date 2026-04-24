@@ -416,20 +416,10 @@
     }
 
     function resetFinancialDataIfNeeded() {
-        const alreadyReset = localStorage.getItem(STORAGE_FINANCIAL_RESET_DONE) === "true";
-        if (alreadyReset) return;
-
-        const users = getUsers();
-        const usersReset = users.map(user => ({
-            ...user,
-            savings: 0
-        }));
-
-        saveUsers(usersReset);
-        saveLoans([]);
-        saveRequests([]);
-        saveGeneralSavings([]);
-        localStorage.setItem(STORAGE_FINANCIAL_RESET_DONE, "true");
+        // IMPORTANTE: desactivado para producción.
+        // Este reset automático causaba que, en ciertos dispositivos/sesiones nuevas,
+        // se sobrescribieran ahorros y datos financieros en 0 al sincronizar.
+        return;
     }
 
     function getBiometricStorageKey(documento) {
@@ -1638,7 +1628,6 @@
         setCurrentUser(getSessionUser());
         initData();
         await initializeFirebaseOnlineMode();
-        resetFinancialDataIfNeeded();
         refreshCurrentUserFromState();
         renderApp();
         maybeShowContributionReminder();
