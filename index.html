@@ -347,8 +347,9 @@
     const STORAGE_SESSION_USER = "natillera_current_user";
     const STORAGE_CONTRIBUTION_ALERT_LAST_SHOWN_PREFIX = "natillera_contribution_alert_last_shown";
     const STORAGE_BIOMETRIC_PREFIX = "natillera_biometric_credential";
+    const STORAGE_MANUAL_FINANCIAL_RESET_ARMED = "natillera_manual_financial_reset_armed";
+    const MANUAL_FINANCIAL_RESET_PHRASE = "RESETEAR-NATILLERA";
     const MONTHLY_INTEREST_RATE = 0.05;
-    const STORAGE_FINANCIAL_RESET_DONE = "natillera_financial_reset_done_v3";
 
     // ---------- FIREBASE (configura con tu proyecto) ----------
     const FIREBASE_CONFIG = window.__FIREBASE_CONFIG__ || {
@@ -415,11 +416,36 @@
         };
     }
 
-    function resetFinancialDataIfNeeded() {
-        // IMPORTANTE: desactivado para producción.
-        // Este reset automático causaba que, en ciertos dispositivos/sesiones nuevas,
-        // se sobrescribieran ahorros y datos financieros en 0 al sincronizar.
-        return;
+    function canRunDangerousFinancialReset(options = {}) {
+        const { force = false, confirmPhrase = "" } = options;
+        const isLocalHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+        const hasManualArm = localStorage.getItem(STORAGE_MANUAL_FINANCIAL_RESET_ARMED) === "true";
+        const phraseMatches = confirmPhrase === MANUAL_FINANCIAL_RESET_PHRASE;
+        return force === true && isLocalHost && hasManualArm && phraseMatches;
+    }
+
+    function armManualFinancialReset() {
+        localStorage.setItem(STORAGE_MANUAL_FINANCIAL_RESET_ARMED, "true");
+        console.warn("Reset financiero armado solo para entorno local. Ejecuta resetFinancialDataIfNeeded({ force: true, confirmPhrase: 'RESETEAR-NATILLERA' }) si realmente deseas borrar datos.");
+    }
+
+    function resetFinancialDataIfNeeded(options = {}) {
+        // Protección de producción: jamás ejecutar reseteo automático de datos financieros.
+        // Solo se permite reset manual local con doble confirmación explícita.
+        if (!canRunDangerousFinancialReset(options)) return false;
+
+        const users = getUsers();
+        const usersReset = users.map(user => ({
+            ...user,
+            savings: 0
+        }));
+
+        saveUsers(usersReset);
+        saveLoans([]);
+        saveRequests([]);
+        saveGeneralSavings([]);
+        localStorage.removeItem(STORAGE_MANUAL_FINANCIAL_RESET_ARMED);
+        return true;
     }
 
     function getBiometricStorageKey(documento) {
@@ -1641,6 +1667,8 @@
     window.renderTesoreroContent = renderTesoreroContent;
     window.renderAdminContent = renderAdminContent;
     window.renderMisPrestamos = renderMisPrestamos;
+    window.armManualFinancialReset = armManualFinancialReset;
+    window.resetFinancialDataIfNeeded = resetFinancialDataIfNeeded;
 
     if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
